@@ -2,7 +2,6 @@
   --bg:#09111f;
   --panel:#101a2e;
   --card:#0f1a30;
-  --card2:#0c1528;
   --text:#e5eef8;
   --muted:#90a4bf;
   --border:rgba(255,255,255,0.08);
@@ -14,7 +13,13 @@
 }
 
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+html,body{
+  margin:0;
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+}
 button,input,select{font:inherit}
 
 .app{
@@ -50,9 +55,7 @@ button,input,select{font:inherit}
   align-items:center;
 }
 
-.wide{
-  width:100%;
-}
+.wide{width:100%}
 
 button{
   border:none;
@@ -160,7 +163,7 @@ select{margin-bottom:8px}
 
 .top-grid{
   display:grid;
-  grid-template-columns:1.2fr 1fr 1fr;
+  grid-template-columns:1.5fr 1fr 1fr;
   gap:14px;
 }
 
@@ -186,15 +189,16 @@ canvas{
   display:block;
   width:100%;
   height:100%;
+  background:transparent;
 }
 
 #courtCanvas{
-  height:660px;
+  height:460px;
 }
 
 #sessionHeatCanvas,
 #allTimeHeatCanvas{
-  height:315px;
+  height:300px;
 }
 
 .hint{
@@ -208,6 +212,6 @@ canvas{
   .sidebar{border-right:none;border-bottom:1px solid var(--border)}
   .top-grid{grid-template-columns:1fr}
   .court-card{grid-row:auto}
-  #courtCanvas{height:540px}
+  #courtCanvas{height:520px}
   #sessionHeatCanvas,#allTimeHeatCanvas{height:280px}
 }
