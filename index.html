@@ -1,1 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3PT Tracker</title>
 
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <header>
+      <h1>3PT Tracker</h1>
+
+      <div class="top-controls">
+        <div class="date-controls">
+          <button id="prevDayBtn">◀</button>
+          <input type="date" id="datePicker" />
+          <button id="nextDayBtn">▶</button>
+        </div>
+
+        <div class="action-controls">
+          <button id="undoBtn">Undo</button>
+          <button id="exportCsvBtn">Export</button>
+          <button id="deleteDayBtn">Tag löschen</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+
+      <section class="session-area">
+
+        <div class="session-controls">
+          <select id="sessionSelect"></select>
+          <button id="newSessionBtn">+</button>
+          <button id="renameSessionBtn">✎</button>
+          <button id="deleteSessionBtn">🗑</button>
+        </div>
+
+        <div class="stats">
+          <div id="sessionStats"></div>
+          <div id="dayStats"></div>
+          <div id="totalStats"></div>
+        </div>
+
+        <div class="hit-miss">
+          <button id="hitBtn" class="hit">Treffer</button>
+          <button id="missBtn" class="miss">Daneben</button>
+        </div>
+
+        <div class="session-notes">
+          <input id="notes" placeholder="Notiz..." />
+          <button id="saveNotesBtn">Save</button>
+        </div>
+
+      </section>
+
+      <section class="charts">
+        <h3>Session</h3>
+        <canvas id="sessionChart"></canvas>
+
+        <h3>Tag</h3>
+        <canvas id="dayChart"></canvas>
+      </section>
+
+      <aside class="past-days">
+        <h3>Vergangene Tage</h3>
+        <div id="pastDaysList"></div>
+      </aside>
+
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
