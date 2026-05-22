@@ -1,73 +1,69 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>3PT Tracker V2</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>3PT Tracker</title>
 
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
 
-<div class="app">
+<div class="layout">
 
   <aside class="sidebar">
-    <h2>📅 Tage</h2>
-    <div id="dayList"></div>
+    <h2>Tage</h2>
+    <div id="days"></div>
   </aside>
 
   <main class="main">
 
-    <header class="topbar">
-      <div>
-        <h1>3PT Tracker</h1>
-        <p id="todayLabel"></p>
-      </div>
-
-      <div class="controls">
-        <button id="undoBtn">Undo</button>
-        <button id="exportBtn">Export</button>
-        <button id="newSessionBtn">+ Session</button>
-      </div>
+    <header class="header">
+      <h1>3PT Tracker</h1>
+      <div id="dateLabel"></div>
     </header>
 
-    <section class="grid">
+    <section class="stats">
 
-      <div class="card big">
-        <h3>Session Stats</h3>
-        <div id="sessionStats" class="bigNumber"></div>
-
-        <div class="buttons">
-          <button id="hitBtn" class="hit">TREFFER</button>
-          <button id="missBtn" class="miss">MISS</button>
-        </div>
+      <div class="card">
+        <h3>Session</h3>
+        <div id="sessionStats">-</div>
       </div>
 
       <div class="card">
         <h3>Tag</h3>
-        <div id="dayStats"></div>
+        <div id="dayStats">-</div>
       </div>
 
       <div class="card">
         <h3>Gesamt</h3>
-        <div id="totalStats"></div>
+        <div id="totalStats">-</div>
       </div>
 
-      <div class="card">
+    </section>
+
+    <section class="actions">
+
+      <button id="hit">Treffer</button>
+      <button id="miss">Fehlwurf</button>
+
+      <button id="newSession">Neue Session</button>
+      <button id="undo">Undo</button>
+
+    </section>
+
+    <section class="charts">
+
+      <div class="chartBox">
         <h3>Session Verlauf</h3>
         <canvas id="sessionChart"></canvas>
       </div>
 
-      <div class="card">
-        <h3>Tages Verlauf</h3>
+      <div class="chartBox">
+        <h3>Tag Verlauf</h3>
         <canvas id="dayChart"></canvas>
-      </div>
-
-      <div class="card">
-        <h3>Shot Heatmap</h3>
-        <div id="heatmap"></div>
       </div>
 
     </section>
