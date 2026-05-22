@@ -36,32 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedZone = null;
   let snapshot = null;
 
-  function rect(x1, y1, x2, y2) {
-    return { x1, y1, x2, y2 };
-  }
-
-  const ZONES = [
-    { id: 0, short: "CL3", name: "Corner Left 3", rect: rect(0.52, 0.00, 1.00, 0.14) },
-    { id: 1, short: "WL3", name: "Wing Left 3", rect: rect(0.52, 0.14, 1.00, 0.32) },
-    { id: 2, short: "TOP3", name: "Top of Key 3", rect: rect(0.52, 0.32, 1.00, 0.68) },
-    { id: 3, short: "WR3", name: "Wing Right 3", rect: rect(0.52, 0.68, 1.00, 0.86) },
-    { id: 4, short: "CR3", name: "Corner Right 3", rect: rect(0.52, 0.86, 1.00, 1.00) },
-
-    { id: 5, short: "MID UL", name: "Midrange Upper Left", rect: rect(0.18, 0.18, 0.34, 0.34) },
-    { id: 6, short: "MID LL", name: "Midrange Lower Left", rect: rect(0.18, 0.66, 0.34, 0.82) },
-    { id: 7, short: "MID UR", name: "Midrange Upper Right", rect: rect(0.34, 0.18, 0.52, 0.34) },
-    { id: 8, short: "MID LR", name: "Midrange Lower Right", rect: rect(0.34, 0.66, 0.52, 0.82) },
-
-    { id: 9, short: "FT", name: "FT Line Zone", rect: rect(0.18, 0.34, 0.52, 0.66) },
-
-    { id: 10, short: "PAINT UL", name: "Paint Upper Left", rect: rect(0.00, 0.24, 0.09, 0.50) },
-    { id: 11, short: "PAINT UR", name: "Paint Upper Right", rect: rect(0.09, 0.24, 0.18, 0.50) },
-    { id: 12, short: "PAINT LL", name: "Paint Lower Left", rect: rect(0.00, 0.50, 0.09, 0.76) },
-    { id: 13, short: "PAINT LR", name: "Paint Lower Right", rect: rect(0.09, 0.50, 0.18, 0.76) },
-  ];
-
-  const ZONE_PRIORITY = [10, 11, 12, 13, 9, 5, 7, 6, 8, 2, 1, 3, 0, 4];
-
   function loadDB() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
@@ -204,32 +178,102 @@ document.addEventListener("DOMContentLoaded", () => {
     return summarizeShots(shots);
   }
 
+  function snapshotPoints(points) {
+    return points.map(([x, y]) => [x, y]);
+  }
+
+  function rect(x1, y1, x2, y2) {
+    return { x1, y1, x2, y2 };
+  }
+
   function rectContains(nx, ny, r) {
     return nx >= r.x1 && nx <= r.x2 && ny >= r.y1 && ny <= r.y2;
   }
 
-  function centroid(r) {
+  function centroidRect(r) {
     return [(r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2];
   }
 
-  function getZoneAtPoint(nx, ny) {
-    for (const id of ZONE_PRIORITY) {
-      if (rectContains(nx, ny, ZONES[id].rect)) return id;
+  const COURT = {
+    hoopX: 0.12,
+    hoopY: 0.50,
+    arcR: 0.54,
+    arcTopY: 0.14,
+    arcBottomY: 0.86,
+  };
+
+  function arcX(y) {
+    const dx = Math.sqrt(
+      Math.max(
+        0,
+        COURT.arcR * COURT.arcR - Math.pow(y - COURT.hoopY, 2)
+      )
+    );
+    return COURT.hoopX + dx;
+  }
+
+  function makeArcBandPolygon(y1, y2, steps = 18) {
+    const pts = [];
+    pts.push([arcX(y1), y1]);
+    pts.push([1.0, y1]);
+    pts.push([1.0, y2]);
+    pts.push([arcX(y2), y2]);
+
+    for (let i = steps - 1; i > 0; i--) {
+      const t = i / steps;
+      const y = y1 + (y2 - y1) * t;
+      pts.push([arcX(y), y]);
     }
 
-    let bestId = 0;
-    let bestDist = Infinity;
-    for (const zone of ZONES) {
-      const c = centroid(zone.rect);
-      const dx = nx - c[0];
-      const dy = ny - c[1];
-      const d = dx * dx + dy * dy;
-      if (d < bestDist) {
-        bestDist = d;
-        bestId = zone.id;
-      }
+    return pts;
+  }
+
+  function pointInPolygon(point, polygon) {
+    const x = point[0];
+    const y = point[1];
+    let inside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i][0], yi = polygon[i][1];
+      const xj = polygon[j][0], yj = polygon[j][1];
+
+      const intersect =
+        ((yi > y) !== (yj > y)) &&
+        (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi);
+
+      if (intersect) inside = !inside;
     }
-    return bestId;
+
+    return inside;
+  }
+
+  function drawPolygon(ctx, points, fill, stroke, lineWidth = 1) {
+    if (!points.length) return;
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i][0], points[i][1]);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+
+  function drawText(ctx, text, x, y, opts = {}) {
+    ctx.save();
+    ctx.font = opts.font || "700 14px system-ui";
+    ctx.fillStyle = opts.fillStyle || "#fff";
+    ctx.textAlign = opts.align || "center";
+    ctx.textBaseline = opts.baseline || "middle";
+    if (opts.shadow) {
+      ctx.shadowColor = "rgba(0,0,0,0.45)";
+      ctx.shadowBlur = 6;
+    }
+    ctx.fillText(text, x, y);
+    ctx.restore();
   }
 
   function colorForPct(pct, attempts) {
@@ -251,6 +295,57 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  const ZONES = [
+    { id: 0, short: "CL3", name: "Corner Left 3", points: [[arcX(COURT.arcTopY), 0.00], [1.00, 0.00], [1.00, COURT.arcTopY], [arcX(COURT.arcTopY), COURT.arcTopY]] },
+    { id: 1, short: "WL3", name: "Wing Left 3", points: makeArcBandPolygon(COURT.arcTopY, 0.32) },
+    { id: 2, short: "TOP3", name: "Top of Key 3", points: makeArcBandPolygon(0.32, 0.68) },
+    { id: 3, short: "WR3", name: "Wing Right 3", points: makeArcBandPolygon(0.68, COURT.arcBottomY) },
+    { id: 4, short: "CR3", name: "Corner Right 3", points: [[arcX(COURT.arcBottomY), COURT.arcBottomY], [1.00, COURT.arcBottomY], [1.00, 1.00], [arcX(COURT.arcBottomY), 1.00]] },
+
+    { id: 5, short: "MID UL", name: "Midrange Upper Left", points: snapshotPoints([[0.18, 0.18], [0.34, 0.18], [0.34, 0.34], [0.18, 0.34]]) },
+    { id: 6, short: "MID LL", name: "Midrange Lower Left", points: snapshotPoints([[0.18, 0.66], [0.34, 0.66], [0.34, 0.82], [0.18, 0.82]]) },
+    { id: 7, short: "MID UR", name: "Midrange Upper Right", points: snapshotPoints([[0.34, 0.18], [0.52, 0.18], [0.52, 0.34], [0.34, 0.34]]) },
+    { id: 8, short: "MID LR", name: "Midrange Lower Right", points: snapshotPoints([[0.34, 0.66], [0.52, 0.66], [0.52, 0.82], [0.34, 0.82]]) },
+
+    { id: 9, short: "FT", name: "FT Line Zone", points: snapshotPoints([[0.18, 0.34], [0.52, 0.34], [0.52, 0.66], [0.18, 0.66]]) },
+
+    { id: 10, short: "PAINT UL", name: "Paint Upper Left", points: snapshotPoints([[0.00, 0.24], [0.09, 0.24], [0.09, 0.50], [0.00, 0.50]]) },
+    { id: 11, short: "PAINT UR", name: "Paint Upper Right", points: snapshotPoints([[0.09, 0.24], [0.18, 0.24], [0.18, 0.50], [0.09, 0.50]]) },
+    { id: 12, short: "PAINT LL", name: "Paint Lower Left", points: snapshotPoints([[0.00, 0.50], [0.09, 0.50], [0.09, 0.76], [0.00, 0.76]]) },
+    { id: 13, short: "PAINT LR", name: "Paint Lower Right", points: snapshotPoints([[0.09, 0.50], [0.18, 0.50], [0.18, 0.76], [0.09, 0.76]]) },
+  ];
+
+  const ZONE_PRIORITY = [10, 11, 12, 13, 9, 5, 7, 6, 8, 2, 1, 3, 0, 4];
+
+  const zoneCentroids = ZONES.map(z => {
+    let x = 0, y = 0;
+    for (const p of z.points) {
+      x += p[0];
+      y += p[1];
+    }
+    return [x / z.points.length, y / z.points.length];
+  });
+
+  function getZoneAtPoint(nx, ny) {
+    for (const id of ZONE_PRIORITY) {
+      if (pointInPolygon([nx, ny], ZONES[id].points)) return id;
+    }
+
+    let bestId = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < ZONES.length; i++) {
+      const c = zoneCentroids[i];
+      const dx = nx - c[0];
+      const dy = ny - c[1];
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = i;
+      }
+    }
+    return bestId;
+  }
+
   function prepareCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -264,39 +359,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     return { ctx, width, height };
-  }
-
-  function toPx(r, width, height) {
-    return {
-      x1: r.x1 * width,
-      y1: r.y1 * height,
-      x2: r.x2 * width,
-      y2: r.y2 * height,
-    };
-  }
-
-  function drawRect(ctx, r, fill, stroke, lineWidth = 1) {
-    const w = r.x2 - r.x1;
-    const h = r.y2 - r.y1;
-    ctx.fillStyle = fill;
-    ctx.fillRect(r.x1, r.y1, w, h);
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.strokeRect(r.x1, r.y1, w, h);
-  }
-
-  function drawText(ctx, text, x, y, opts = {}) {
-    ctx.save();
-    ctx.font = opts.font || "700 14px system-ui";
-    ctx.fillStyle = opts.fillStyle || "#fff";
-    ctx.textAlign = opts.align || "center";
-    ctx.textBaseline = opts.baseline || "middle";
-    if (opts.shadow) {
-      ctx.shadowColor = "rgba(0,0,0,0.45)";
-      ctx.shadowBlur = 6;
-    }
-    ctx.fillText(text, x, y);
-    ctx.restore();
   }
 
   function drawCourtBase(ctx, width, height) {
@@ -315,30 +377,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const hoopX = width * 0.12;
     const hoopY = height * 0.50;
 
-    const paintX = width * 0.18;
-    const ftX = width * 0.26;
-    const threeLineX = width * 0.52;
-
     ctx.strokeStyle = soft;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.4;
 
     // Paint / key
     ctx.beginPath();
-    ctx.rect(0, height * 0.24, paintX, height * 0.52);
+    ctx.rect(0, height * 0.24, width * 0.18, height * 0.52);
     ctx.stroke();
 
     // FT line
     ctx.beginPath();
-    ctx.moveTo(ftX, height * 0.24);
-    ctx.lineTo(ftX, height * 0.76);
+    ctx.moveTo(width * 0.26, height * 0.24);
+    ctx.lineTo(width * 0.26, height * 0.76);
     ctx.stroke();
 
-    // Lane center / FT zone hints
+    // lane separators
     ctx.beginPath();
-    ctx.moveTo(paintX, height * 0.34);
-    ctx.lineTo(threeLineX, height * 0.34);
-    ctx.moveTo(paintX, height * 0.66);
-    ctx.lineTo(threeLineX, height * 0.66);
+    ctx.moveTo(width * 0.18, height * 0.34);
+    ctx.lineTo(width * 0.52, height * 0.34);
+    ctx.moveTo(width * 0.18, height * 0.66);
+    ctx.lineTo(width * 0.52, height * 0.66);
     ctx.stroke();
 
     // Basket
@@ -348,22 +406,45 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx.arc(hoopX, hoopY, Math.min(width, height) * 0.018, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Restricted arc
+    // Restricted area
     ctx.beginPath();
     ctx.arc(hoopX, hoopY, width * 0.08, -0.95, 0.95);
     ctx.stroke();
 
-    // 3PT line: arc + corner lines
+    // Three-point line: curved arc + corner lines
     ctx.beginPath();
-    ctx.ellipse(hoopX, hoopY, width * 0.36, height * 0.42, 0, -1.05, 1.05);
+    const steps = 42;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const y = COURT.arcTopY + (COURT.arcBottomY - COURT.arcTopY) * t;
+      const x = arcX(y);
+      if (i === 0) ctx.moveTo(x * width, y * height);
+      else ctx.lineTo(x * width, y * height);
+    }
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(threeLineX, height * 0.14);
-    ctx.lineTo(width, height * 0.14);
-    ctx.moveTo(threeLineX, height * 0.86);
-    ctx.lineTo(width, height * 0.86);
+    ctx.moveTo(arcX(COURT.arcTopY) * width, COURT.arcTopY * height);
+    ctx.lineTo(width, COURT.arcTopY * height);
+    ctx.moveTo(arcX(COURT.arcBottomY) * width, COURT.arcBottomY * height);
+    ctx.lineTo(width, COURT.arcBottomY * height);
     ctx.stroke();
+  }
+
+  function drawPolygonZone(ctx, zone, style, highlightedZoneId, width, height) {
+    const px = zone.points.map(([x, y]) => [x * width, y * height]);
+    drawPolygon(ctx, px, style.fill, style.border, highlightedZoneId === zone.id ? 2.6 : 1.15);
+
+    let x = 0;
+    let y = 0;
+    for (const p of px) {
+      x += p[0];
+      y += p[1];
+    }
+    x /= px.length;
+    y /= px.length;
+
+    return { x, y };
   }
 
   function renderCourtMap(canvas, stats, mode, highlightedZoneId) {
@@ -378,7 +459,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const attempts = z ? z.attempts : 0;
       const made = z ? z.made : 0;
       const pct = attempts ? Math.round((made / attempts) * 100) : 0;
-      const px = toPx(zone.rect, width, height);
 
       let style;
       if (mode === "selected") {
@@ -398,18 +478,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      drawRect(ctx, px, style.fill, style.border, highlightedZoneId === zone.id ? 2.5 : 1.1);
+      const c = drawPolygonZone(ctx, zone, style, highlightedZoneId, width, height);
 
-      const cx = (px.x1 + px.x2) / 2;
-      const cy = (px.y1 + px.y2) / 2;
-
-      drawText(ctx, zone.short, cx, cy - 10, {
+      drawText(ctx, zone.short, c.x, c.y - 10, {
         font: labelFont,
         fillStyle: style.text,
         shadow: true,
       });
 
-      drawText(ctx, attempts ? `${pct}%` : "--", cx, cy + 12, {
+      drawText(ctx, attempts ? `${pct}%` : "--", c.x, c.y + 12, {
         font: pctFont,
         fillStyle: style.text,
         shadow: true,
@@ -698,6 +775,26 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedZone = getZoneAtPoint(nx, ny);
     render();
   });
+
+  function getZoneAtPoint(nx, ny) {
+    for (const id of ZONE_PRIORITY) {
+      if (pointInPolygon([nx, ny], ZONES[id].points)) return id;
+    }
+
+    let bestId = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < ZONES.length; i++) {
+      const c = zoneCentroids[i];
+      const dx = nx - c[0];
+      const dy = ny - c[1];
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = i;
+      }
+    }
+    return bestId;
+  }
 
   window.addEventListener("resize", () => render());
 
