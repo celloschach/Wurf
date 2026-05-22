@@ -59,6 +59,7 @@ button{
   border:none;
   border-radius:8px;
   cursor:pointer;
+  color:black; /* <<< FIX: alle Buttons schwarze Schrift */
 }
 
 #hit{background:#22c55e}
