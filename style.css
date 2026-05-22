@@ -14,73 +14,40 @@ body{
 .sidebar{
   background:#111c33;
   padding:15px;
-  overflow:auto;
-}
-
-.sidebar div{
-  padding:8px;
-  margin:5px 0;
-  background:#1a2a45;
-  border-radius:8px;
-  cursor:pointer;
-}
-
-.main{
-  padding:20px;
-}
-
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.stats{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-top:15px;
-}
-
-.card{
-  background:#111c33;
-  padding:12px;
-  border-radius:10px;
-}
-
-.actions{
-  margin-top:15px;
-  display:flex;
-  gap:10px;
 }
 
 button{
+  display:block;
+  width:100%;
+  margin-top:10px;
   padding:10px;
   border:none;
   border-radius:8px;
   cursor:pointer;
-  color:black; /* <<< FIX: alle Buttons schwarze Schrift */
+  color:black;
 }
 
 #hit{background:#22c55e}
 #miss{background:#ef4444}
-#newSession{background:#3b82f6}
-#undo{background:#64748b}
+#clear{background:#64748b}
 
-.charts{
-  margin-top:20px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
+.main{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
 }
 
-.chartBox{
-  background:#111c33;
-  padding:10px;
-  border-radius:10px;
+.court-wrapper{
+  width:500px;
+  height:800px;
+  background:#1b2a44;
+  border-radius:12px;
+  border:2px solid #2b3d60;
+  position:relative;
 }
 
 canvas{
-  background:white;
-  border-radius:8px;
+  width:100%;
+  height:100%;
 }
