@@ -1,215 +1,122 @@
-const KEY = "3pt_v3";
+const canvas = document.getElementById("court");
+const ctx = canvas.getContext("2d");
 
-let db = JSON.parse(localStorage.getItem(KEY) || "{}");
+canvas.width = 500;
+canvas.height = 800;
 
-let date = new Date().toISOString().slice(0,10);
-let sessionId = null;
+/* ---------------- STATE ---------------- */
 
-let sessionChart, dayChart;
-let snap = null;
+let mode = "hit"; // hit | miss
 
-function save(){
-  localStorage.setItem(KEY, JSON.stringify(db));
-}
+let shots = JSON.parse(localStorage.getItem("shots") || "[]");
 
-function ensureDay(d){
-  if(!db[d]) db[d] = {sessions:[]};
-}
+/* ---------------- UI ---------------- */
 
-function getSession(){
-  return db[date].sessions.find(s=>s.id===sessionId);
-}
+document.getElementById("hit").onclick = () => mode = "hit";
+document.getElementById("miss").onclick = () => mode = "miss";
 
-function snapshot(){
-  snap = JSON.parse(JSON.stringify(db));
-}
+document.getElementById("clear").onclick = () => {
+  shots = [];
+  localStorage.removeItem("shots");
+  draw();
+  updateStats();
+};
 
-function undo(){
-  if(!snap) return;
-  db = snap;
-  snap = null;
-  save();
-  render();
-}
+/* ---------------- CLICK SHOTS ---------------- */
 
-function pct(m,a){
-  return a?Math.round(m/a*100):0;
-}
+canvas.addEventListener("click", (e) => {
+  const rect = canvas.getBoundingClientRect();
 
-function totalsDay(d){
-  let m=0,a=0;
-  db[d].sessions.forEach(s=>{
-    m+=s.made;
-    a+=s.attempts;
-  });
-  return {m,a};
-}
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
 
-function totalsAll(){
-  let m=0,a=0;
-  Object.values(db).forEach(day=>{
-    day.sessions.forEach(s=>{
-      m+=s.made;
-      a+=s.attempts;
-    });
-  });
-  return {m,a};
-}
-
-function changeDay(d){
-  date=d;
-  ensureDay(d);
-  sessionId=db[d].sessions[0]?.id;
-  render();
-}
-
-/* ---------------- actions ---------------- */
-
-function hit(){
-  const s=getSession();
-  if(!s) return;
-
-  snapshot();
-  s.attempts++;
-  s.made++;
-  s.shots.push(1);
-  save(); render();
-}
-
-function miss(){
-  const s=getSession();
-  if(!s) return;
-
-  snapshot();
-  s.attempts++;
-  s.shots.push(0);
-  save(); render();
-}
-
-function newSession(){
-  snapshot();
-
-  const s={
-    id:Date.now().toString(),
-    name:"Session",
-    attempts:0,
-    made:0,
-    shots:[]
-  };
-
-  db[date].sessions.push(s);
-  sessionId=s.id;
-
-  save(); render();
-}
-
-/* ---------------- render ---------------- */
-
-function render(){
-
-  ensureDay(date);
-
-  document.getElementById("dateLabel").textContent=date;
-
-  const day=db[date];
-
-  if(!sessionId && day.sessions.length){
-    sessionId=day.sessions[0].id;
-  }
-
-  const s=getSession();
-
-  document.getElementById("sessionStats").textContent=
-    s?`${s.made}/${s.attempts} (${pct(s.made,s.attempts)}%)`:"-";
-
-  const d=totalsDay(date);
-  document.getElementById("dayStats").textContent=`${d.m}/${d.a}`;
-
-  const all=totalsAll();
-  document.getElementById("totalStats").textContent=`${all.m}/${all.a}`;
-
-  /* sidebar */
-  const box=document.getElementById("days");
-  box.innerHTML="";
-
-  Object.keys(db).reverse().forEach(d=>{
-    const el=document.createElement("div");
-    el.textContent=d;
-    el.onclick=()=>changeDay(d);
-    box.appendChild(el);
+  shots.push({
+    x,
+    y,
+    made: mode === "hit"
   });
 
-  renderCharts();
+  localStorage.setItem("shots", JSON.stringify(shots));
+
+  draw();
+  updateStats();
+});
+
+/* ---------------- COURT ---------------- */
+
+function drawCourt(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "#1b2a44";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+
+  // Außenlinien
+  ctx.strokeRect(40,40,420,720);
+
+  // Center line
+  ctx.beginPath();
+  ctx.moveTo(40,400);
+  ctx.lineTo(460,400);
+  ctx.stroke();
+
+  // 3pt arc (simple)
+  ctx.beginPath();
+  ctx.arc(250, 650, 180, Math.PI, 0, true);
+  ctx.stroke();
+
+  // Paint area
+  ctx.strokeRect(170,40,160,180);
 }
 
-/* ---------------- charts ---------------- */
+/* ---------------- HEATMAP ---------------- */
 
-function renderCharts(){
+function drawShots(){
 
-  if(sessionChart) sessionChart.destroy();
-  if(dayChart) dayChart.destroy();
+  shots.forEach(s => {
 
-  const s=getSession();
+    const x = s.x * canvas.width;
+    const y = s.y * canvas.height;
 
-  let data=[];
-  let m=0,a=0;
-
-  (s?.shots||[]).forEach(x=>{
-    a++;
-    if(x) m++;
-    data.push(pct(m,a));
-  });
-
-  sessionChart=new Chart(
-    document.getElementById("sessionChart"),
-    {
-      type:"line",
-      data:{labels:data.map((_,i)=>i+1),datasets:[{data}]},
-      options:{scales:{y:{min:0,max:100}}}
+    if(s.made){
+      ctx.fillStyle = "rgba(34,197,94,0.55)";
+    } else {
+      ctx.fillStyle = "rgba(239,68,68,0.55)";
     }
-  );
 
-  const keys=Object.keys(db);
-
-  dayChart=new Chart(
-    document.getElementById("dayChart"),
-    {
-      type:"line",
-      data:{
-        labels:keys,
-        datasets:[{
-          data:keys.map(k=>{
-            const t=totalsDay(k);
-            return pct(t.m,t.a);
-          })
-        }]
-      },
-      options:{scales:{y:{min:0,max:100}}}
-    }
-  );
-}
-
-/* ---------------- events ---------------- */
-
-document.getElementById("hit").onclick=hit;
-document.getElementById("miss").onclick=miss;
-document.getElementById("newSession").onclick=newSession;
-document.getElementById("undo").onclick=undo;
-
-/* ---------------- init ---------------- */
-
-ensureDay(date);
-
-if(!db[date].sessions.length){
-  db[date].sessions.push({
-    id:Date.now().toString(),
-    name:"Session 1",
-    attempts:0,
-    made:0,
-    shots:[]
+    ctx.beginPath();
+    ctx.arc(x,y,10,0,Math.PI*2);
+    ctx.fill();
   });
 }
 
-sessionId=db[date].sessions[0].id;
+/* ---------------- STATS ---------------- */
 
-render();
+function updateStats(){
+
+  const made = shots.filter(s=>s.made).length;
+  const total = shots.length;
+
+  const pct = total ? Math.round(made/total*100) : 0;
+
+  document.getElementById("stats").innerHTML = `
+    <b>Made:</b> ${made}<br>
+    <b>Total:</b> ${total}<br>
+    <b>FG%:</b> ${pct}%<br>
+    <b>Mode:</b> ${mode.toUpperCase()}
+  `;
+}
+
+/* ---------------- RENDER ---------------- */
+
+function draw(){
+  drawCourt();
+  drawShots();
+}
+
+/* ---------------- INIT ---------------- */
+
+draw();
+updateStats();
