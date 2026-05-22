@@ -4,24 +4,47 @@ const ctx = canvas.getContext("2d");
 canvas.width = 500;
 canvas.height = 700;
 
-const KEY = "tracker_v4";
+const KEY = "tracker_v5";
+
+/* ---------------- STATE ---------------- */
 
 let db = JSON.parse(localStorage.getItem(KEY) || "{}");
 
 let date = new Date().toISOString().slice(0,10);
 let sessionId = null;
 let selectedZone = null;
-let snap = null;
+let snapshot = null;
 
-let sessionChart, dayChart;
+/* ---------------- INIT ---------------- */
 
-/* ---------------- INIT DATA ---------------- */
+function ensure(){
+  if(!db[date]) db[date] = {sessions:[]};
 
-function ensureDay(d){
-  if(!db[d]) db[d] = {sessions:[]};
+  if(db[date].sessions.length === 0){
+    db[date].sessions.push(createSession());
+  }
+
+  sessionId = db[date].sessions[0].id;
 }
 
-ensureDay(date);
+function createSession(){
+  return {
+    id: Date.now().toString(),
+    made: 0,
+    attempts: 0,
+    shots: [],
+    zones:{
+      0:{m:0,a:0},
+      1:{m:0,a:0},
+      2:{m:0,a:0},
+      3:{m:0,a:0},
+      4:{m:0,a:0},
+      5:{m:0,a:0}
+    }
+  };
+}
+
+ensure();
 
 /* ---------------- SAVE ---------------- */
 
@@ -31,14 +54,14 @@ function save(){
 
 /* ---------------- SNAPSHOT ---------------- */
 
-function snapshot(){
-  snap = JSON.parse(JSON.stringify(db));
+function snap(){
+  snapshot = JSON.parse(JSON.stringify(db));
 }
 
 function undo(){
-  if(!snap) return;
-  db = snap;
-  snap = null;
+  if(!snapshot) return;
+  db = snapshot;
+  snapshot = null;
   save();
   render();
 }
@@ -49,26 +72,7 @@ function getSession(){
   return db[date].sessions.find(s=>s.id===sessionId);
 }
 
-function newSession(){
-  snapshot();
-
-  const s={
-    id:Date.now().toString(),
-    name:"Session",
-    attempts:0,
-    made:0,
-    shots:[],
-    zones:{0:{m:0,a:0},1:{m:0,a:0},2:{m:0,a:0},3:{m:0,a:0},4:{m:0,a:0},5:{m:0,a:0}}
-  };
-
-  db[date].sessions.push(s);
-  sessionId=s.id;
-
-  save();
-  render();
-}
-
-/* ---------------- ZONE LOGIC ---------------- */
+/* ---------------- ZONE ---------------- */
 
 function getZone(x,y){
   if(y < 0.5){
@@ -82,33 +86,32 @@ function getZone(x,y){
   }
 }
 
-/* ---------------- CLICK COURT ---------------- */
+/* ---------------- CLICK ---------------- */
 
 canvas.addEventListener("click",(e)=>{
-  const rect = canvas.getBoundingClientRect();
+  const r = canvas.getBoundingClientRect();
 
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
+  const x = (e.clientX - r.left) / r.width;
+  const y = (e.clientY - r.top) / r.height;
 
   selectedZone = getZone(x,y);
 
-  document.getElementById("selectedInfo").innerText =
+  document.getElementById("info").innerText =
     "Zone: " + selectedZone;
 
   draw();
 });
 
-/* ---------------- HIT / MISS ---------------- */
+/* ---------------- ACTIONS ---------------- */
 
 function hit(){
   const s=getSession();
   if(!s || selectedZone===null) return;
 
-  snapshot();
+  snap();
 
   s.attempts++;
   s.made++;
-
   s.shots.push(1);
 
   s.zones[selectedZone].m++;
@@ -121,7 +124,7 @@ function miss(){
   const s=getSession();
   if(!s || selectedZone===null) return;
 
-  snapshot();
+  snap();
 
   s.attempts++;
   s.shots.push(0);
@@ -131,24 +134,22 @@ function miss(){
   save(); render();
 }
 
+function newSession(){
+  snap();
+
+  db[date].sessions.push(createSession());
+  sessionId = db[date].sessions.at(-1).id;
+
+  save(); render();
+}
+
 /* ---------------- STATS ---------------- */
 
 function pct(m,a){
-  return a?Math.round(m/a*100):0;
+  return a ? Math.round(m/a*100) : 0;
 }
 
-function totalDay(){
-  let m=0,a=0;
-
-  db[date].sessions.forEach(s=>{
-    m+=s.made;
-    a+=s.attempts;
-  });
-
-  return {m,a};
-}
-
-/* ---------------- COLOR ---------------- */
+/* ---------------- COLORS ---------------- */
 
 function color(p){
   if(p===0) return "#1f2937";
@@ -183,93 +184,40 @@ function drawCourt(){
 /* ---------------- HEATMAP ---------------- */
 
 function drawZones(){
+  const s=getSession();
+  if(!s) return;
 
   const w=500,h=700;
   const zw=w/3;
   const zh=h/2;
 
-  const s=getSession();
-  if(!s) return;
-
   for(let i=0;i<6;i++){
 
     const z=s.zones[i];
-    const p=z.a?Math.round(z.m/z.a*100):0;
+    const p = z.a ? pct(z.m,z.a) : 0;
 
     const x=(i%3)*zw;
     const y=i<3?0:zh;
 
     ctx.fillStyle=color(p);
-    ctx.globalAlpha=0.55;
+    ctx.globalAlpha=0.6;
     ctx.fillRect(x,y,zw,zh);
     ctx.globalAlpha=1;
 
-    ctx.fillStyle="#fff";
-    ctx.font="20px sans-serif";
+    ctx.fillStyle="white";
+    ctx.font="20px system-ui";
     ctx.fillText(p+"%", x+zw/2-15, y+zh/2);
   }
-}
-
-/* ---------------- CHARTS ---------------- */
-
-function renderCharts(){
-
-  if(sessionChart) sessionChart.destroy();
-  if(dayChart) dayChart.destroy();
-
-  const s=getSession();
-  let data=[];
-  let m=0,a=0;
-
-  (s?.shots||[]).forEach(x=>{
-    a++;
-    if(x) m++;
-    data.push(pct(m,a));
-  });
-
-  sessionChart=new Chart(document.getElementById("sessionChart"),{
-    type:"line",
-    data:{labels:data.map((_,i)=>i+1),datasets:[{data}]},
-    options:{scales:{y:{min:0,max:100}}}
-  });
-
-  const keys=Object.keys(db);
-
-  dayChart=new Chart(document.getElementById("dayChart"),{
-    type:"line",
-    data:{
-      labels:keys,
-      datasets:[{
-        data:keys.map(k=>{
-          let t=totalDay(k);
-          return pct(t.m,t.a);
-        })
-      }]
-    },
-    options:{scales:{y:{min:0,max:100}}}
-  });
 }
 
 /* ---------------- RENDER ---------------- */
 
 function render(){
 
-  ensureDay(date);
-
-  const day=db[date];
-
-  if(!sessionId && day.sessions.length){
-    sessionId=day.sessions[0].id;
-  }
-
   const s=getSession();
 
-  document.getElementById("stats").innerHTML=
-    s?`${s.made}/${s.attempts} (${pct(s.made,s.attempts)}%)`:"-";
-
-  const d=totalDay();
-  document.getElementById("stats").innerHTML+=
-    `<br>Tag: ${d.m}/${d.a}`;
+  document.getElementById("stats").innerHTML =
+    s ? `${s.made}/${s.attempts} (${pct(s.made,s.attempts)}%)` : "-";
 
   const list=document.getElementById("days");
   list.innerHTML="";
@@ -277,12 +225,11 @@ function render(){
   Object.keys(db).reverse().forEach(d=>{
     const el=document.createElement("div");
     el.textContent=d;
-    el.onclick=()=>{date=d; sessionId=null; render();};
+    el.onclick=()=>{date=d; ensure(); render();};
     list.appendChild(el);
   });
 
   draw();
-  renderCharts();
 }
 
 /* ---------------- DRAW ---------------- */
@@ -294,17 +241,11 @@ function draw(){
 
 /* ---------------- EVENTS ---------------- */
 
-document.getElementById("hitBtn").onclick=hit;
-document.getElementById("missBtn").onclick=miss;
-document.getElementById("newSessionBtn").onclick=newSession;
-document.getElementById("undoBtn").onclick=undo;
+document.getElementById("hit").onclick=hit;
+document.getElementById("miss").onclick=miss;
+document.getElementById("newSession").onclick=newSession;
+document.getElementById("undo").onclick=undo;
 
-/* ---------------- INIT ---------------- */
-
-if(!db[date].sessions.length){
-  newSession();
-}else{
-  sessionId=db[date].sessions[0].id;
-}
+/* ---------------- INIT RENDER ---------------- */
 
 render();
