@@ -5,14 +5,14 @@ body{
   color:white;
 }
 
-.app{
+.layout{
   display:grid;
   grid-template-columns:220px 1fr;
   height:100vh;
 }
 
 .sidebar{
-  background:#0f1a2e;
+  background:#111c33;
   padding:15px;
   overflow:auto;
 }
@@ -20,7 +20,7 @@ body{
 .sidebar div{
   padding:8px;
   margin:5px 0;
-  background:#15243d;
+  background:#1a2a45;
   border-radius:8px;
   cursor:pointer;
 }
@@ -29,71 +29,57 @@ body{
   padding:20px;
 }
 
-.topbar{
+.header{
   display:flex;
   justify-content:space-between;
   align-items:center;
 }
 
-.controls button{
-  margin-left:8px;
-}
-
-.grid{
+.stats{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:15px;
-  margin-top:20px;
+  gap:10px;
+  margin-top:15px;
 }
 
 .card{
   background:#111c33;
-  padding:15px;
-  border-radius:12px;
+  padding:12px;
+  border-radius:10px;
 }
 
-.card.big{
-  grid-column:span 3;
-}
-
-.bigNumber{
-  font-size:32px;
-  margin:10px 0;
-}
-
-.buttons{
+.actions{
+  margin-top:15px;
   display:flex;
   gap:10px;
 }
 
-.hit{
-  background:#22c55e;
+button{
+  padding:10px;
   border:none;
-  padding:12px;
-  flex:1;
+  border-radius:8px;
+  cursor:pointer;
 }
 
-.miss{
-  background:#ef4444;
-  border:none;
-  padding:12px;
-  flex:1;
+#hit{background:#22c55e}
+#miss{background:#ef4444}
+#newSession{background:#3b82f6}
+#undo{background:#64748b}
+
+.charts{
+  margin-top:20px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.chartBox{
+  background:#111c33;
+  padding:10px;
+  border-radius:10px;
 }
 
 canvas{
   background:white;
-  border-radius:10px;
-  padding:10px;
-}
-
-#heatmap{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:5px;
-}
-
-.cell{
-  aspect-ratio:1;
-  background:#1f2a44;
-  border-radius:6px;
+  border-radius:8px;
 }
