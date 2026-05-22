@@ -3,10 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>3PT Tracker</title>
+<title>3PT Heatmap Advanced</title>
 
 <link rel="stylesheet" href="style.css" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -14,59 +13,21 @@
 <div class="layout">
 
   <aside class="sidebar">
-    <h2>Tage</h2>
-    <div id="days"></div>
+    <h2>Stats</h2>
+    <div id="stats">-</div>
+
+    <button id="hit">Treffer Mode</button>
+    <button id="miss">Miss Mode</button>
+    <button id="clear">Reset</button>
   </aside>
 
   <main class="main">
 
-    <header class="header">
-      <h1>3PT Tracker</h1>
-      <div id="dateLabel"></div>
-    </header>
+    <h1>Basketball Shot Heatmap</h1>
 
-    <section class="stats">
-
-      <div class="card">
-        <h3>Session</h3>
-        <div id="sessionStats">-</div>
-      </div>
-
-      <div class="card">
-        <h3>Tag</h3>
-        <div id="dayStats">-</div>
-      </div>
-
-      <div class="card">
-        <h3>Gesamt</h3>
-        <div id="totalStats">-</div>
-      </div>
-
-    </section>
-
-    <section class="actions">
-
-      <button id="hit">Treffer</button>
-      <button id="miss">Fehlwurf</button>
-
-      <button id="newSession">Neue Session</button>
-      <button id="undo">Undo</button>
-
-    </section>
-
-    <section class="charts">
-
-      <div class="chartBox">
-        <h3>Session Verlauf</h3>
-        <canvas id="sessionChart"></canvas>
-      </div>
-
-      <div class="chartBox">
-        <h3>Tag Verlauf</h3>
-        <canvas id="dayChart"></canvas>
-      </div>
-
-    </section>
+    <div class="court-wrapper">
+      <canvas id="court"></canvas>
+    </div>
 
   </main>
 
