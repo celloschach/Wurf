@@ -2,121 +2,309 @@ const canvas = document.getElementById("court");
 const ctx = canvas.getContext("2d");
 
 canvas.width = 500;
-canvas.height = 800;
+canvas.height = 700;
 
-/* ---------------- STATE ---------------- */
+const KEY = "tracker_v4";
 
-let mode = "hit"; // hit | miss
+let db = JSON.parse(localStorage.getItem(KEY) || "{}");
 
-let shots = JSON.parse(localStorage.getItem("shots") || "[]");
+let date = new Date().toISOString().slice(0,10);
+let sessionId = null;
+let selectedZone = null;
+let snap = null;
 
-/* ---------------- UI ---------------- */
+let sessionChart, dayChart;
 
-document.getElementById("hit").onclick = () => mode = "hit";
-document.getElementById("miss").onclick = () => mode = "miss";
+/* ---------------- INIT DATA ---------------- */
 
-document.getElementById("clear").onclick = () => {
-  shots = [];
-  localStorage.removeItem("shots");
-  draw();
-  updateStats();
-};
+function ensureDay(d){
+  if(!db[d]) db[d] = {sessions:[]};
+}
 
-/* ---------------- CLICK SHOTS ---------------- */
+ensureDay(date);
 
-canvas.addEventListener("click", (e) => {
+/* ---------------- SAVE ---------------- */
+
+function save(){
+  localStorage.setItem(KEY, JSON.stringify(db));
+}
+
+/* ---------------- SNAPSHOT ---------------- */
+
+function snapshot(){
+  snap = JSON.parse(JSON.stringify(db));
+}
+
+function undo(){
+  if(!snap) return;
+  db = snap;
+  snap = null;
+  save();
+  render();
+}
+
+/* ---------------- SESSION ---------------- */
+
+function getSession(){
+  return db[date].sessions.find(s=>s.id===sessionId);
+}
+
+function newSession(){
+  snapshot();
+
+  const s={
+    id:Date.now().toString(),
+    name:"Session",
+    attempts:0,
+    made:0,
+    shots:[],
+    zones:{0:{m:0,a:0},1:{m:0,a:0},2:{m:0,a:0},3:{m:0,a:0},4:{m:0,a:0},5:{m:0,a:0}}
+  };
+
+  db[date].sessions.push(s);
+  sessionId=s.id;
+
+  save();
+  render();
+}
+
+/* ---------------- ZONE LOGIC ---------------- */
+
+function getZone(x,y){
+  if(y < 0.5){
+    if(x < 0.33) return 0;
+    if(x < 0.66) return 1;
+    return 2;
+  } else {
+    if(x < 0.33) return 3;
+    if(x < 0.66) return 4;
+    return 5;
+  }
+}
+
+/* ---------------- CLICK COURT ---------------- */
+
+canvas.addEventListener("click",(e)=>{
   const rect = canvas.getBoundingClientRect();
 
   const x = (e.clientX - rect.left) / rect.width;
   const y = (e.clientY - rect.top) / rect.height;
 
-  shots.push({
-    x,
-    y,
-    made: mode === "hit"
-  });
+  selectedZone = getZone(x,y);
 
-  localStorage.setItem("shots", JSON.stringify(shots));
+  document.getElementById("selectedInfo").innerText =
+    "Zone: " + selectedZone;
 
   draw();
-  updateStats();
 });
 
-/* ---------------- COURT ---------------- */
+/* ---------------- HIT / MISS ---------------- */
 
-function drawCourt(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+function hit(){
+  const s=getSession();
+  if(!s || selectedZone===null) return;
 
-  ctx.fillStyle = "#1b2a44";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  snapshot();
 
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 2;
+  s.attempts++;
+  s.made++;
 
-  // Außenlinien
-  ctx.strokeRect(40,40,420,720);
+  s.shots.push(1);
 
-  // Center line
-  ctx.beginPath();
-  ctx.moveTo(40,400);
-  ctx.lineTo(460,400);
-  ctx.stroke();
+  s.zones[selectedZone].m++;
+  s.zones[selectedZone].a++;
 
-  // 3pt arc (simple)
-  ctx.beginPath();
-  ctx.arc(250, 650, 180, Math.PI, 0, true);
-  ctx.stroke();
-
-  // Paint area
-  ctx.strokeRect(170,40,160,180);
+  save(); render();
 }
 
-/* ---------------- HEATMAP ---------------- */
+function miss(){
+  const s=getSession();
+  if(!s || selectedZone===null) return;
 
-function drawShots(){
+  snapshot();
 
-  shots.forEach(s => {
+  s.attempts++;
+  s.shots.push(0);
 
-    const x = s.x * canvas.width;
-    const y = s.y * canvas.height;
+  s.zones[selectedZone].a++;
 
-    if(s.made){
-      ctx.fillStyle = "rgba(34,197,94,0.55)";
-    } else {
-      ctx.fillStyle = "rgba(239,68,68,0.55)";
-    }
-
-    ctx.beginPath();
-    ctx.arc(x,y,10,0,Math.PI*2);
-    ctx.fill();
-  });
+  save(); render();
 }
 
 /* ---------------- STATS ---------------- */
 
-function updateStats(){
+function pct(m,a){
+  return a?Math.round(m/a*100):0;
+}
 
-  const made = shots.filter(s=>s.made).length;
-  const total = shots.length;
+function totalDay(){
+  let m=0,a=0;
 
-  const pct = total ? Math.round(made/total*100) : 0;
+  db[date].sessions.forEach(s=>{
+    m+=s.made;
+    a+=s.attempts;
+  });
 
-  document.getElementById("stats").innerHTML = `
-    <b>Made:</b> ${made}<br>
-    <b>Total:</b> ${total}<br>
-    <b>FG%:</b> ${pct}%<br>
-    <b>Mode:</b> ${mode.toUpperCase()}
-  `;
+  return {m,a};
+}
+
+/* ---------------- COLOR ---------------- */
+
+function color(p){
+  if(p===0) return "#1f2937";
+  if(p<30) return "#ef4444";
+  if(p<60) return "#f97316";
+  return "#22c55e";
+}
+
+/* ---------------- COURT ---------------- */
+
+function drawCourt(){
+  ctx.clearRect(0,0,500,700);
+
+  ctx.fillStyle="#1b2a44";
+  ctx.fillRect(0,0,500,700);
+
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=2;
+
+  ctx.strokeRect(0,0,500,700);
+
+  ctx.beginPath();
+  ctx.moveTo(166,0);
+  ctx.lineTo(166,700);
+  ctx.moveTo(332,0);
+  ctx.lineTo(332,700);
+  ctx.moveTo(0,350);
+  ctx.lineTo(500,350);
+  ctx.stroke();
+}
+
+/* ---------------- HEATMAP ---------------- */
+
+function drawZones(){
+
+  const w=500,h=700;
+  const zw=w/3;
+  const zh=h/2;
+
+  const s=getSession();
+  if(!s) return;
+
+  for(let i=0;i<6;i++){
+
+    const z=s.zones[i];
+    const p=z.a?Math.round(z.m/z.a*100):0;
+
+    const x=(i%3)*zw;
+    const y=i<3?0:zh;
+
+    ctx.fillStyle=color(p);
+    ctx.globalAlpha=0.55;
+    ctx.fillRect(x,y,zw,zh);
+    ctx.globalAlpha=1;
+
+    ctx.fillStyle="#fff";
+    ctx.font="20px sans-serif";
+    ctx.fillText(p+"%", x+zw/2-15, y+zh/2);
+  }
+}
+
+/* ---------------- CHARTS ---------------- */
+
+function renderCharts(){
+
+  if(sessionChart) sessionChart.destroy();
+  if(dayChart) dayChart.destroy();
+
+  const s=getSession();
+  let data=[];
+  let m=0,a=0;
+
+  (s?.shots||[]).forEach(x=>{
+    a++;
+    if(x) m++;
+    data.push(pct(m,a));
+  });
+
+  sessionChart=new Chart(document.getElementById("sessionChart"),{
+    type:"line",
+    data:{labels:data.map((_,i)=>i+1),datasets:[{data}]},
+    options:{scales:{y:{min:0,max:100}}}
+  });
+
+  const keys=Object.keys(db);
+
+  dayChart=new Chart(document.getElementById("dayChart"),{
+    type:"line",
+    data:{
+      labels:keys,
+      datasets:[{
+        data:keys.map(k=>{
+          let t=totalDay(k);
+          return pct(t.m,t.a);
+        })
+      }]
+    },
+    options:{scales:{y:{min:0,max:100}}}
+  });
 }
 
 /* ---------------- RENDER ---------------- */
 
+function render(){
+
+  ensureDay(date);
+
+  const day=db[date];
+
+  if(!sessionId && day.sessions.length){
+    sessionId=day.sessions[0].id;
+  }
+
+  const s=getSession();
+
+  document.getElementById("stats").innerHTML=
+    s?`${s.made}/${s.attempts} (${pct(s.made,s.attempts)}%)`:"-";
+
+  const d=totalDay();
+  document.getElementById("stats").innerHTML+=
+    `<br>Tag: ${d.m}/${d.a}`;
+
+  const list=document.getElementById("days");
+  list.innerHTML="";
+
+  Object.keys(db).reverse().forEach(d=>{
+    const el=document.createElement("div");
+    el.textContent=d;
+    el.onclick=()=>{date=d; sessionId=null; render();};
+    list.appendChild(el);
+  });
+
+  draw();
+  renderCharts();
+}
+
+/* ---------------- DRAW ---------------- */
+
 function draw(){
   drawCourt();
-  drawShots();
+  drawZones();
 }
+
+/* ---------------- EVENTS ---------------- */
+
+document.getElementById("hitBtn").onclick=hit;
+document.getElementById("missBtn").onclick=miss;
+document.getElementById("newSessionBtn").onclick=newSession;
+document.getElementById("undoBtn").onclick=undo;
 
 /* ---------------- INIT ---------------- */
 
-draw();
-updateStats();
+if(!db[date].sessions.length){
+  newSession();
+}else{
+  sessionId=db[date].sessions[0].id;
+}
+
+render();
