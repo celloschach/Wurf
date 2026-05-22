@@ -3,10 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>3PT Tracker V4</title>
+<title>3PT Tracker V5</title>
 
 <link rel="stylesheet" href="style.css" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -16,36 +15,28 @@
   <aside class="sidebar">
     <h2>Controls</h2>
 
-    <div id="selectedInfo">Zone: -</div>
+    <div id="info">Zone: -</div>
 
-    <button id="hitBtn">TREFFER</button>
-    <button id="missBtn">MISS</button>
+    <button id="hit">TREFFER</button>
+    <button id="miss">MISS</button>
+    <button id="newSession">NEW SESSION</button>
+    <button id="undo">UNDO</button>
 
-    <button id="newSessionBtn">+ Session</button>
-    <button id="undoBtn">Undo</button>
-
-    <hr />
+    <hr/>
 
     <h3>Stats</h3>
     <div id="stats"></div>
 
-    <h3>Tage</h3>
+    <h3>Days</h3>
     <div id="days"></div>
   </aside>
 
   <main class="main">
-
-    <h1>3PT Tracker + Heatmap</h1>
+    <h1>Half Court Heatmap</h1>
 
     <div class="court-wrapper">
       <canvas id="court"></canvas>
     </div>
-
-    <div class="charts">
-      <canvas id="sessionChart"></canvas>
-      <canvas id="dayChart"></canvas>
-    </div>
-
   </main>
 
 </div>
