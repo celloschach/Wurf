@@ -36,47 +36,41 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedZone = null;
   let snapshot = null;
 
-  function R(x1, y1, x2, y2) {
-    return [
-      [x1, y1],
-      [x2, y1],
-      [x2, y2],
-      [x1, y2],
-    ];
+  function rect(x1, y1, x2, y2) {
+    return { x1, y1, x2, y2 };
   }
 
   const ZONES = [
-    { id: 0, short: "CL3", name: "Corner Left 3", points: R(0.00, 0.72, 0.20, 1.00) },
-    { id: 1, short: "WL3", name: "Wing Left 3", points: R(0.00, 0.42, 0.20, 0.72) },
-    { id: 2, short: "TOP3", name: "Top of Key 3", points: R(0.20, 0.13, 0.80, 0.42) },
-    { id: 3, short: "WR3", name: "Wing Right 3", points: R(0.80, 0.42, 1.00, 0.72) },
-    { id: 4, short: "CR3", name: "Corner Right 3", points: R(0.80, 0.72, 1.00, 1.00) },
+    { id: 0, short: "CL3", name: "Corner Left 3", rect: rect(0.52, 0.00, 1.00, 0.14) },
+    { id: 1, short: "WL3", name: "Wing Left 3", rect: rect(0.52, 0.14, 1.00, 0.32) },
+    { id: 2, short: "TOP3", name: "Top of Key 3", rect: rect(0.52, 0.32, 1.00, 0.68) },
+    { id: 3, short: "WR3", name: "Wing Right 3", rect: rect(0.52, 0.68, 1.00, 0.86) },
+    { id: 4, short: "CR3", name: "Corner Right 3", rect: rect(0.52, 0.86, 1.00, 1.00) },
 
-    { id: 5, short: "FT", name: "FT Line Area", points: R(0.36, 0.42, 0.64, 0.58) },
+    { id: 5, short: "MID UL", name: "Midrange Upper Left", rect: rect(0.18, 0.18, 0.34, 0.34) },
+    { id: 6, short: "MID LL", name: "Midrange Lower Left", rect: rect(0.18, 0.66, 0.34, 0.82) },
+    { id: 7, short: "MID UR", name: "Midrange Upper Right", rect: rect(0.34, 0.18, 0.52, 0.34) },
+    { id: 8, short: "MID LR", name: "Midrange Lower Right", rect: rect(0.34, 0.66, 0.52, 0.82) },
 
-    { id: 6, short: "LM1", name: "Left Midrange High", points: R(0.20, 0.42, 0.36, 0.58) },
-    { id: 7, short: "LM2", name: "Left Midrange Low", points: R(0.20, 0.58, 0.36, 0.72) },
-    { id: 8, short: "RM2", name: "Right Midrange Low", points: R(0.64, 0.58, 0.80, 0.72) },
-    { id: 9, short: "RM1", name: "Right Midrange High", points: R(0.64, 0.42, 0.80, 0.58) },
+    { id: 9, short: "FT", name: "FT Line Zone", rect: rect(0.18, 0.34, 0.52, 0.66) },
 
-    { id: 10, short: "PLU", name: "Paint Left Upper", points: R(0.36, 0.58, 0.50, 0.78) },
-    { id: 11, short: "PRU", name: "Paint Right Upper", points: R(0.50, 0.58, 0.64, 0.78) },
-    { id: 12, short: "PLL", name: "Paint Left Lower", points: R(0.36, 0.78, 0.50, 1.00) },
-    { id: 13, short: "PRL", name: "Paint Right Lower", points: R(0.50, 0.78, 0.64, 1.00) },
+    { id: 10, short: "PAINT UL", name: "Paint Upper Left", rect: rect(0.00, 0.24, 0.09, 0.50) },
+    { id: 11, short: "PAINT UR", name: "Paint Upper Right", rect: rect(0.09, 0.24, 0.18, 0.50) },
+    { id: 12, short: "PAINT LL", name: "Paint Lower Left", rect: rect(0.00, 0.50, 0.09, 0.76) },
+    { id: 13, short: "PAINT LR", name: "Paint Lower Right", rect: rect(0.09, 0.50, 0.18, 0.76) },
   ];
 
-  const ZONE_PRIORITY = [12, 13, 10, 11, 5, 6, 7, 8, 9, 2, 1, 3, 0, 4];
-
-  const zoneCentroids = ZONES.map(z => centroid(z.points));
+  const ZONE_PRIORITY = [10, 11, 12, 13, 9, 5, 7, 6, 8, 2, 1, 3, 0, 4];
 
   function loadDB() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     try {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") return parsed;
-    } catch (_) {}
-    return {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
   }
 
   function saveDB() {
@@ -84,8 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function isoToday() {
-    const d = new Date();
-    return isoFromDate(d);
+    return isoFromDate(new Date());
   }
 
   function isoFromDate(d) {
@@ -108,6 +101,20 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function migrateDB() {
+    for (const dayKey of Object.keys(db)) {
+      const day = db[dayKey];
+      if (!day.sessions || !Array.isArray(day.sessions)) {
+        day.sessions = [];
+      }
+      for (const session of day.sessions) {
+        if (!Array.isArray(session.shots)) session.shots = [];
+        if (!session.name) session.name = "Session";
+        if (!session.createdAt) session.createdAt = Date.now();
+      }
+    }
+  }
+
   function ensureDate(date) {
     if (!db[date]) db[date] = { sessions: [] };
     if (!db[date].sessions || !db[date].sessions.length) {
@@ -123,13 +130,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function currentSession() {
     const day = currentDay();
     return day.sessions.find(s => s.id === selectedSessionId) || day.sessions[0] || null;
-  }
-
-  function setSelectedDate(date) {
-    selectedDate = date;
-    ensureDate(selectedDate);
-    selectedSessionId = currentDay().sessions[0]?.id || null;
-    render();
   }
 
   function snapshotState() {
@@ -185,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function summarizeSessions(sessions) {
     const shots = [];
     for (const s of sessions || []) {
-      if (s.shots && s.shots.length) shots.push(...s.shots);
+      if (Array.isArray(s.shots) && s.shots.length) shots.push(...s.shots);
     }
     return summarizeShots(shots);
   }
@@ -198,56 +198,35 @@ document.addEventListener("DOMContentLoaded", () => {
     const shots = [];
     for (const day of Object.keys(db)) {
       for (const session of db[day].sessions || []) {
-        if (session.shots && session.shots.length) shots.push(...session.shots);
+        if (Array.isArray(session.shots) && session.shots.length) shots.push(...session.shots);
       }
     }
     return summarizeShots(shots);
   }
 
-  function pointInPolygon(point, polygon) {
-    const x = point[0];
-    const y = point[1];
-    let inside = false;
-
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i][0], yi = polygon[i][1];
-      const xj = polygon[j][0], yj = polygon[j][1];
-
-      const intersect =
-        ((yi > y) !== (yj > y)) &&
-        (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi);
-
-      if (intersect) inside = !inside;
-    }
-
-    return inside;
+  function rectContains(nx, ny, r) {
+    return nx >= r.x1 && nx <= r.x2 && ny >= r.y1 && ny <= r.y2;
   }
 
-  function centroid(points) {
-    let x = 0;
-    let y = 0;
-    for (const p of points) {
-      x += p[0];
-      y += p[1];
-    }
-    return [x / points.length, y / points.length];
+  function centroid(r) {
+    return [(r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2];
   }
 
   function getZoneAtPoint(nx, ny) {
     for (const id of ZONE_PRIORITY) {
-      if (pointInPolygon([nx, ny], ZONES[id].points)) return id;
+      if (rectContains(nx, ny, ZONES[id].rect)) return id;
     }
 
     let bestId = 0;
     let bestDist = Infinity;
-    for (let i = 0; i < ZONES.length; i++) {
-      const c = zoneCentroids[i];
+    for (const zone of ZONES) {
+      const c = centroid(zone.rect);
       const dx = nx - c[0];
       const dy = ny - c[1];
       const d = dx * dx + dy * dy;
       if (d < bestDist) {
         bestDist = d;
-        bestId = i;
+        bestId = zone.id;
       }
     }
     return bestId;
@@ -256,8 +235,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function colorForPct(pct, attempts) {
     if (!attempts) {
       return {
-        fill: "rgba(148, 163, 184, 0.14)",
-        border: "rgba(148, 163, 184, 0.40)",
+        fill: "rgba(148,163,184,0.14)",
+        border: "rgba(148,163,184,0.40)",
         text: "#e2e8f0",
       };
     }
@@ -287,23 +266,23 @@ document.addEventListener("DOMContentLoaded", () => {
     return { ctx, width, height };
   }
 
-  function polyToPixels(points, width, height) {
-    return points.map(([x, y]) => [x * width, y * height]);
+  function toPx(r, width, height) {
+    return {
+      x1: r.x1 * width,
+      y1: r.y1 * height,
+      x2: r.x2 * width,
+      y2: r.y2 * height,
+    };
   }
 
-  function drawPolygon(ctx, points, fill, stroke, lineWidth = 1) {
-    if (!points.length) return;
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0], points[i][1]);
-    }
-    ctx.closePath();
+  function drawRect(ctx, r, fill, stroke, lineWidth = 1) {
+    const w = r.x2 - r.x1;
+    const h = r.y2 - r.y1;
     ctx.fillStyle = fill;
-    ctx.fill();
+    ctx.fillRect(r.x1, r.y1, w, h);
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
-    ctx.stroke();
+    ctx.strokeRect(r.x1, r.y1, w, h);
   }
 
   function drawText(ctx, text, x, y, opts = {}) {
@@ -331,58 +310,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ctx.strokeStyle = line;
     ctx.lineWidth = 2;
-
     ctx.strokeRect(0, 0, width, height);
 
-    const x1 = width * 0.20;
-    const x2 = width * 0.36;
-    const x3 = width * 0.50;
-    const x4 = width * 0.64;
-    const x5 = width * 0.80;
+    const hoopX = width * 0.12;
+    const hoopY = height * 0.50;
 
-    const y1 = height * 0.42;
-    const y2 = height * 0.58;
-    const y3 = height * 0.72;
-    const y4 = height * 0.78;
+    const paintX = width * 0.18;
+    const ftX = width * 0.26;
+    const threeLineX = width * 0.52;
 
     ctx.strokeStyle = soft;
     ctx.lineWidth = 1.5;
 
+    // Paint / key
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x1, y3);
-    ctx.moveTo(x5, y1);
-    ctx.lineTo(x5, y3);
-    ctx.moveTo(x2, y1);
-    ctx.lineTo(x2, height);
-    ctx.moveTo(x4, y1);
-    ctx.lineTo(x4, height);
-    ctx.moveTo(x3, y2);
-    ctx.lineTo(x3, height);
-    ctx.moveTo(0, y1);
-    ctx.lineTo(width, y1);
-    ctx.moveTo(0, y2);
-    ctx.lineTo(width, y2);
-    ctx.moveTo(0, y3);
-    ctx.lineTo(width, y3);
-    ctx.moveTo(0, y4);
-    ctx.lineTo(width, y4);
+    ctx.rect(0, height * 0.24, paintX, height * 0.52);
     ctx.stroke();
 
+    // FT line
+    ctx.beginPath();
+    ctx.moveTo(ftX, height * 0.24);
+    ctx.lineTo(ftX, height * 0.76);
+    ctx.stroke();
+
+    // Lane center / FT zone hints
+    ctx.beginPath();
+    ctx.moveTo(paintX, height * 0.34);
+    ctx.lineTo(threeLineX, height * 0.34);
+    ctx.moveTo(paintX, height * 0.66);
+    ctx.lineTo(threeLineX, height * 0.66);
+    ctx.stroke();
+
+    // Basket
     ctx.strokeStyle = line;
     ctx.lineWidth = 2;
-
     ctx.beginPath();
-    ctx.arc(width / 2, height * 0.91, Math.min(width, height) * 0.035, 0, Math.PI * 2);
+    ctx.arc(hoopX, hoopY, Math.min(width, height) * 0.018, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Restricted arc
+    ctx.beginPath();
+    ctx.arc(hoopX, hoopY, width * 0.08, -0.95, 0.95);
+    ctx.stroke();
+
+    // 3PT line: arc + corner lines
+    ctx.beginPath();
+    ctx.ellipse(hoopX, hoopY, width * 0.36, height * 0.42, 0, -1.05, 1.05);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(width * 0.43, height * 0.94);
-    ctx.lineTo(width * 0.57, height * 0.94);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(width / 2, height * 0.91, width * 0.34, Math.PI * 1.04, Math.PI * -0.04, true);
+    ctx.moveTo(threeLineX, height * 0.14);
+    ctx.lineTo(width, height * 0.14);
+    ctx.moveTo(threeLineX, height * 0.86);
+    ctx.lineTo(width, height * 0.86);
     ctx.stroke();
   }
 
@@ -390,48 +370,57 @@ document.addEventListener("DOMContentLoaded", () => {
     const { ctx, width, height } = prepareCanvas(canvas);
     drawCourtBase(ctx, width, height);
 
-    const labelFont = `${Math.max(10, Math.round(width * 0.024))}px system-ui`;
-    const pctFont = `${Math.max(14, Math.round(width * 0.034))}px system-ui`;
+    const labelFont = `${Math.max(10, Math.round(width * 0.016))}px system-ui`;
+    const pctFont = `${Math.max(14, Math.round(width * 0.022))}px system-ui`;
 
     for (const zone of ZONES) {
-      const pxPoints = polyToPixels(zone.points, width, height);
-      const zoneStats = stats ? stats.zones[zone.id] : null;
-      const attempts = zoneStats ? zoneStats.attempts : 0;
-      const made = zoneStats ? zoneStats.made : 0;
+      const z = stats ? stats.zones[zone.id] : null;
+      const attempts = z ? z.attempts : 0;
+      const made = z ? z.made : 0;
       const pct = attempts ? Math.round((made / attempts) * 100) : 0;
+      const px = toPx(zone.rect, width, height);
 
       let style;
       if (mode === "selected") {
         style = {
           fill: "rgba(148,163,184,0.10)",
-          border: "rgba(255,255,255,0.25)",
+          border: "rgba(255,255,255,0.26)",
           text: "#ffffff",
         };
         if (highlightedZoneId === zone.id) {
-          style.fill = "rgba(245, 158, 11, 0.38)";
-          style.border = "rgba(245, 158, 11, 0.98)";
+          style.fill = "rgba(245,158,11,0.38)";
+          style.border = "rgba(245,158,11,0.98)";
         }
       } else {
         style = colorForPct(pct, attempts);
         if (highlightedZoneId === zone.id) {
-          style.border = "rgba(245, 158, 11, 0.98)";
+          style.border = "rgba(245,158,11,0.98)";
         }
       }
 
-      drawPolygon(ctx, pxPoints, style.fill, style.border, highlightedZoneId === zone.id ? 2.6 : 1.2);
+      drawRect(ctx, px, style.fill, style.border, highlightedZoneId === zone.id ? 2.5 : 1.1);
 
-      const c = centroid(pxPoints);
-      drawText(ctx, zone.short, c[0], c[1] - 12, {
+      const cx = (px.x1 + px.x2) / 2;
+      const cy = (px.y1 + px.y2) / 2;
+
+      drawText(ctx, zone.short, cx, cy - 10, {
         font: labelFont,
         fillStyle: style.text,
         shadow: true,
       });
-      drawText(ctx, attempts ? `${pct}%` : "--", c[0], c[1] + 10, {
+
+      drawText(ctx, attempts ? `${pct}%` : "--", cx, cy + 12, {
         font: pctFont,
         fillStyle: style.text,
         shadow: true,
       });
     }
+  }
+
+  function renderInteractiveCourt() {
+    const session = currentSession();
+    const stats = summarizeShots(session ? session.shots : []);
+    renderCourtMap(courtCanvas, stats, "selected", selectedZone);
   }
 
   function renderSessionHeatmap() {
@@ -445,30 +434,15 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCourtMap(allTimeHeatCanvas, stats, "heatmap", selectedZone);
   }
 
-  function renderInteractiveCourt() {
-    const session = currentSession();
-    const stats = summarizeShots(session ? session.shots : []);
-    renderCourtMap(courtCanvas, stats, "selected", selectedZone);
-  }
-
   function updateSessionSelect() {
     const day = currentDay();
 
-    const summaryBySession = day.sessions.map(s => {
-      const sum = summarizeShots(s.shots);
-      return {
-        id: s.id,
-        name: s.name,
-        attempts: sum.attempts,
-        made: sum.made,
-      };
-    });
-
     sessionSelect.innerHTML = "";
-    for (const s of summaryBySession) {
+    for (const s of day.sessions) {
+      const sum = summarizeShots(s.shots);
       const opt = document.createElement("option");
       opt.value = s.id;
-      opt.textContent = `${s.name} (${s.made}/${s.attempts})`;
+      opt.textContent = `${s.name} (${sum.made}/${sum.attempts})`;
       sessionSelect.appendChild(opt);
     }
 
@@ -567,7 +541,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     session.shots.push({
       zone: selectedZone,
-      made: made,
+      made,
       ts: Date.now(),
       date: selectedDate,
     });
@@ -727,6 +701,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("resize", () => render());
 
+  migrateDB();
   ensureDate(selectedDate);
   selectedSessionId = currentDay().sessions[0]?.id || null;
   undoBtn.disabled = true;
