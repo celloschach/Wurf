@@ -1,1 +1,23 @@
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f1720;
+  color:white;
+}
 
+.container{padding:20px;max-width:1100px;margin:auto;}
+
+main{display:grid;grid-template-columns:1fr 1fr 250px;gap:20px;}
+
+button{cursor:pointer}
+
+.session-area,.charts,.past-days{
+  background:#111a27;
+  padding:15px;
+  border-radius:10px;
+}
+
+.hit{background:green;color:white}
+.miss{background:red;color:white}
+
+canvas{background:white;border-radius:10px;padding:10px}
