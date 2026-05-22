@@ -1,46 +1,88 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>3PT Tracker V5</title>
-
-<link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3PT Tracker</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="panel">
+        <h2>Datum</h2>
+        <div class="row">
+          <button id="prevDayBtn">◀</button>
+          <input id="dateInput" type="date" />
+          <button id="nextDayBtn">▶</button>
+        </div>
+        <button id="deleteDayBtn" class="wide">Tag löschen</button>
+        <button id="exportBtn" class="wide">Export CSV</button>
+        <button id="undoBtn" class="wide">Undo</button>
+      </div>
 
-<div class="layout">
+      <div class="panel">
+        <h2>Session</h2>
+        <select id="sessionSelect"></select>
+        <div class="row">
+          <button id="newSessionBtn">Neue</button>
+          <button id="renameSessionBtn">Umbenennen</button>
+        </div>
+        <button id="deleteSessionBtn" class="wide">Session löschen</button>
+      </div>
 
-  <aside class="sidebar">
-    <h2>Controls</h2>
+      <div class="panel">
+        <h2>Zone</h2>
+        <div id="selectedZoneInfo" class="zone-info">Keine Zone gewählt</div>
+        <div class="row">
+          <button id="hitBtn" class="hit">Treffer</button>
+          <button id="missBtn" class="miss">Fehlwurf</button>
+        </div>
+      </div>
 
-    <div id="info">Zone: -</div>
+      <div class="panel">
+        <h2>Stats</h2>
+        <div id="sessionStats" class="stats-line">Session: -</div>
+        <div id="dayStats" class="stats-line">Tag: -</div>
+        <div id="allTimeStats" class="stats-line">All Time: -</div>
+        <div id="zoneStats" class="stats-line">Zone: -</div>
+      </div>
 
-    <button id="hit">TREFFER</button>
-    <button id="miss">MISS</button>
-    <button id="newSession">NEW SESSION</button>
-    <button id="undo">UNDO</button>
+      <div class="panel">
+        <h2>Tage</h2>
+        <div id="dayList" class="day-list"></div>
+      </div>
+    </aside>
 
-    <hr/>
+    <main class="main">
+      <header class="header">
+        <div>
+          <h1>3PT Tracker + Heatmap</h1>
+          <div id="currentDateLabel" class="subtle"></div>
+        </div>
+        <div id="currentSessionLabel" class="subtle"></div>
+      </header>
 
-    <h3>Stats</h3>
-    <div id="stats"></div>
+      <section class="top-grid">
+        <div class="card court-card">
+          <div class="card-title">Court auswählen</div>
+          <canvas id="courtCanvas"></canvas>
+          <div class="hint">Klick auf eine Zone, dann Treffer oder Fehlwurf drücken.</div>
+        </div>
 
-    <h3>Days</h3>
-    <div id="days"></div>
-  </aside>
+        <div class="card">
+          <div class="card-title">Session Heatmap</div>
+          <canvas id="sessionHeatCanvas"></canvas>
+        </div>
 
-  <main class="main">
-    <h1>Half Court Heatmap</h1>
+        <div class="card">
+          <div class="card-title">All Time Heatmap</div>
+          <canvas id="allTimeHeatCanvas"></canvas>
+        </div>
+      </section>
+    </main>
+  </div>
 
-    <div class="court-wrapper">
-      <canvas id="court"></canvas>
-    </div>
-  </main>
-
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
