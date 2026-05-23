@@ -66,6 +66,66 @@
       <section class="top-grid">
         <div class="card court-card">
           <div class="card-title">Court auswählen</div>
+          <div class="court-stage">
+            <img src="court.png" alt="Basketball Court" class="court-img" />
+            <svg id="courtSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="none"></svg>
+          </div>
+          <div class="hint">Klick auf eine Zone oder irgendwo auf den Court. Danach Treffer oder Fehlwurf drücken.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Session Heatmap</div>
+          <div class="court-stage small-stage">
+            <img src="court.png" alt="Basketball Court" class="court-img" />
+            <svg id="sessionSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">All Time Heatmap</div>
+          <div class="court-stage small-stage">
+            <img src="court.png" alt="Basketball Court" class="court-img" />
+            <svg id="allTimeSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>        <div class="row">
+          <button id="hitBtn" class="hit">Treffer</button>
+          <button id="missBtn" class="miss">Fehlwurf</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Stats</h2>
+        <div id="sessionStats" class="stats-line">Session: -</div>
+        <div id="dayStats" class="stats-line">Tag: -</div>
+        <div id="allTimeStats" class="stats-line">All Time: -</div>
+        <div id="zoneStats" class="stats-line">Zone: -</div>
+      </div>
+
+      <div class="panel">
+        <h2>Tage</h2>
+        <div id="dayList" class="day-list"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div>
+          <h1>3PT Tracker + Heatmap</h1>
+          <div id="currentDateLabel" class="subtle"></div>
+        </div>
+        <div id="currentSessionLabel" class="subtle"></div>
+      </header>
+
+      <section class="top-grid">
+        <div class="card court-card">
+          <div class="card-title">Court auswählen</div>
           <svg id="courtSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="none"></svg>
           <div class="hint">Klick auf eine Zone, dann Treffer oder Fehlwurf drücken.</div>
         </div>
