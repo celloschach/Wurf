@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const STORAGE_KEY = "shottracker_v8";
+  const STORAGE_KEY = "shottracker_v9";
 
   const dateInput = document.getElementById("dateInput");
   const prevDayBtn = document.getElementById("prevDayBtn");
@@ -35,6 +35,609 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedSessionId = null;
   let selectedZone = null;
   let snapshot = null;
+
+  function loadDB() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveDB() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  }
+
+  function isoToday() {
+    return isoFromDate(new Date());
+  }
+
+  function isoFromDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function makeSession(name) {
+    return {
+      id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      name,
+      shots: [],
+      createdAt: Date.now(),
+    };
+  }
+
+  function migrateDB() {
+    for (const dayKey of Object.keys(db)) {
+      const day = db[dayKey];
+      if (!day.sessions || !Array.isArray(day.sessions)) day.sessions = [];
+      for (const session of day.sessions) {
+        if (!Array.isArray(session.shots)) session.shots = [];
+        if (!session.name) session.name = "Session";
+        if (!session.createdAt) session.createdAt = Date.now();
+      }
+    }
+  }
+
+  function ensureDate(date) {
+    if (!db[date]) db[date] = { sessions: [] };
+    if (!db[date].sessions || !db[date].sessions.length) {
+      db[date].sessions = [makeSession("Session 1")];
+    }
+  }
+
+  function currentDay() {
+    ensureDate(selectedDate);
+    return db[selectedDate];
+  }
+
+  function currentSession() {
+    const day = currentDay();
+    return day.sessions.find(s => s.id === selectedSessionId) || day.sessions[0] || null;
+  }
+
+  function snapshotState() {
+    snapshot = {
+      db: clone(db),
+      selectedDate,
+      selectedSessionId,
+      selectedZone,
+    };
+    undoBtn.disabled = false;
+  }
+
+  function undo() {
+    if (!snapshot) return;
+    db = snapshot.db;
+    selectedDate = snapshot.selectedDate;
+    selectedSessionId = snapshot.selectedSessionId;
+    selectedZone = snapshot.selectedZone;
+    snapshot = null;
+    saveDB();
+    render();
+    undoBtn.disabled = true;
+  }
+
+  function formatPct(made, attempts) {
+    return attempts ? `${Math.round((made / attempts) * 100)}%` : "0%";
+  }
+
+  function emptyZoneStats() {
+    return ZONES.map(() => ({ made: 0, attempts: 0 }));
+  }
+
+  function summarizeShots(shots) {
+    const zones = emptyZoneStats();
+    let made = 0;
+    let attempts = 0;
+
+    for (const shot of shots || []) {
+      if (!shot || typeof shot.zone !== "number") continue;
+      const z = zones[shot.zone];
+      if (!z) continue;
+      z.attempts++;
+      attempts++;
+      if (shot.made) {
+        z.made++;
+        made++;
+      }
+    }
+
+    return { made, attempts, zones };
+  }
+
+  function summarizeSessions(sessions) {
+    const shots = [];
+    for (const s of sessions || []) {
+      if (Array.isArray(s.shots) && s.shots.length) shots.push(...s.shots);
+    }
+    return summarizeShots(shots);
+  }
+
+  function allDaysSorted() {
+    return Object.keys(db).sort();
+  }
+
+  function allTimeSummary() {
+    const shots = [];
+    for (const day of Object.keys(db)) {
+      for (const session of db[day].sessions || []) {
+        if (Array.isArray(session.shots) && session.shots.length) shots.push(...session.shots);
+      }
+    }
+    return summarizeShots(shots);
+  }
+
+  function rect(x1, y1, x2, y2) {
+    return { x1, y1, x2, y2 };
+  }
+
+  function rectPoints(r) {
+    return [
+      [r.x1, r.y1],
+      [r.x2, r.y1],
+      [r.x2, r.y2],
+      [r.x1, r.y2],
+    ];
+  }
+
+  function centroidRect(r) {
+    return [(r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2];
+  }
+
+  const ZONES = [
+    { id: 0, short: "CL", name: "Corner Left", rect: rect(0, 0, 180, 380) },
+    { id: 1, short: "WL", name: "Wing Left", rect: rect(180, 0, 340, 380) },
+    { id: 2, short: "TOP", name: "Top of Key", rect: rect(340, 0, 660, 380) },
+    { id: 3, short: "WR", name: "Wing Right", rect: rect(660, 0, 820, 380) },
+    { id: 4, short: "CR", name: "Corner Right", rect: rect(820, 0, 1000, 380) },
+
+    { id: 5, short: "MU-L", name: "Midrange Upper Left", rect: rect(0, 380, 180, 520) },
+    { id: 6, short: "ML-L", name: "Midrange Lower Left", rect: rect(180, 380, 340, 560) },
+    { id: 7, short: "FT", name: "FT Line Zone", rect: rect(340, 380, 660, 560) },
+    { id: 8, short: "ML-R", name: "Midrange Lower Right", rect: rect(660, 380, 820, 560) },
+    { id: 9, short: "MU-R", name: "Midrange Upper Right", rect: rect(820, 380, 1000, 520) },
+
+    { id: 10, short: "PUL", name: "Paint Upper Left", rect: rect(340, 560, 500, 605) },
+    { id: 11, short: "PUR", name: "Paint Upper Right", rect: rect(500, 560, 660, 605) },
+    { id: 12, short: "PLL", name: "Paint Lower Left", rect: rect(340, 605, 500, 680) },
+    { id: 13, short: "PLR", name: "Paint Lower Right", rect: rect(500, 605, 660, 680) },
+  ];
+
+  function zoneLabelPos(zone) {
+    return centroidRect(zone.rect);
+  }
+
+  function zoneColor(pct, attempts) {
+    if (!attempts) {
+      return {
+        fill: "rgba(30, 64, 175, 0.18)",
+        stroke: "rgba(15, 23, 42, 0.40)",
+        text: "#0f172a",
+      };
+    }
+    const hue = Math.max(0, Math.min(120, pct * 1.2));
+    const opacity = 0.30 + Math.min(attempts, 20) / 20 * 0.38;
+    return {
+      fill: `hsla(${hue}, 88%, 52%, ${opacity})`,
+      stroke: `hsla(${hue}, 96%, 64%, 0.95)`,
+      text: "#0f172a",
+    };
+  }
+
+  function pointInPolygon(point, polygon) {
+    const [x, y] = point;
+    let inside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      const intersect =
+        ((yi > y) !== (yj > y)) &&
+        (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }
+
+  function getZoneAtPoint(nx, ny) {
+    const px = nx * 1000;
+    const py = ny * 680;
+
+    for (const z of ZONES) {
+      if (pointInPolygon([px, py], rectPoints(z.rect))) return z.id;
+    }
+
+    let bestId = 0;
+    let bestDist = Infinity;
+    for (const z of ZONES) {
+      const [cx, cy] = zoneLabelPos(z);
+      const dx = px - cx;
+      const dy = py - cy;
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = z.id;
+      }
+    }
+    return bestId;
+  }
+
+  function svgEl(tag, attrs = {}, children = "") {
+    const attrText = Object.entries(attrs)
+      .map(([k, v]) => `${k}="${String(v)}"`)
+      .join(" ");
+    return children
+      ? `<${tag} ${attrText}>${children}</${tag}>`
+      : `<${tag} ${attrText} />`;
+  }
+
+  function renderCourtBase() {
+    return "";
+  }
+
+  function makeZonePolygon(zone, style, selected, interactive) {
+    const points = rectPoints(zone.rect).map(p => p.join(",")).join(" ");
+    const [x, y] = zoneLabelPos(zone);
+
+    return [
+      svgEl("polygon", {
+        points,
+        fill: style.fill,
+        stroke: style.stroke,
+        "stroke-width": selected ? 4 : 2,
+        "data-zone-id": zone.id,
+        class: selected ? "zone-hit" : "",
+        style: interactive ? "cursor:pointer; pointer-events:all" : "pointer-events:none",
+      }),
+      svgEl("text", {
+        x,
+        y: y - 10,
+        "text-anchor": "middle",
+        class: "zone-label",
+        fill: style.text,
+        "pointer-events": "none",
+      }, zone.short),
+      svgEl("text", {
+        x,
+        y: y + 18,
+        "text-anchor": "middle",
+        class: "zone-pct",
+        fill: style.text,
+        "pointer-events": "none",
+      }, style.pctLabel),
+    ].join("");
+  }
+
+  function renderSvg(svg, stats, interactive) {
+    const selected = selectedZone;
+
+    const zoneMarkup = ZONES.map(z => {
+      const zStats = stats.zones[z.id] || { made: 0, attempts: 0 };
+      const pct = zStats.attempts ? Math.round((zStats.made / zStats.attempts) * 100) : 0;
+
+      let style = zoneColor(pct, zStats.attempts);
+      style = {
+        ...style,
+        pctLabel: zStats.attempts ? `${pct}%` : "--",
+      };
+
+      if (interactive && selected === z.id) {
+        style.fill = "rgba(245,158,11,0.34)";
+        style.stroke = "rgba(245,158,11,0.98)";
+        style.text = "#0f172a";
+      }
+
+      return makeZonePolygon(z, style, interactive && selected === z.id, interactive);
+    }).join("");
+
+    svg.innerHTML = `
+      ${renderCourtBase()}
+      ${zoneMarkup}
+    `;
+
+    if (interactive) {
+      svg.onclick = (e) => {
+        const rect = svg.getBoundingClientRect();
+        const nx = (e.clientX - rect.left) / rect.width;
+        const ny = (e.clientY - rect.top) / rect.height;
+        selectedZone = getZoneAtPoint(nx, ny);
+        render();
+      };
+
+      svg.querySelectorAll("[data-zone-id]").forEach(node => {
+        node.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedZone = Number(node.getAttribute("data-zone-id"));
+          render();
+        });
+      });
+    }
+  }
+
+  function renderCourt() {
+    const session = currentSession();
+    const stats = summarizeShots(session ? session.shots : []);
+    renderSvg(courtSvg, stats, true);
+  }
+
+  function renderSessionHeatmap() {
+    const session = currentSession();
+    const stats = summarizeShots(session ? session.shots : []);
+    renderSvg(sessionSvg, stats, false);
+  }
+
+  function renderAllTimeHeatmap() {
+    const stats = allTimeSummary();
+    renderSvg(allTimeSvg, stats, false);
+  }
+
+  function updateSessionSelect() {
+    const day = currentDay();
+    sessionSelect.innerHTML = "";
+
+    for (const s of day.sessions) {
+      const sum = summarizeShots(s.shots);
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = `${s.name} (${sum.made}/${sum.attempts})`;
+      sessionSelect.appendChild(opt);
+    }
+
+    if (!selectedSessionId || !day.sessions.some(s => s.id === selectedSessionId)) {
+      selectedSessionId = day.sessions[0]?.id || null;
+    }
+
+    sessionSelect.value = selectedSessionId || "";
+  }
+
+  function updateDayList() {
+    const keys = allDaysSorted().reverse();
+    dayListEl.innerHTML = "";
+
+    for (const day of keys) {
+      const summary = summarizeSessions(db[day].sessions);
+      const item = document.createElement("div");
+      item.className = "day-item" + (day === selectedDate ? " active" : "");
+      item.innerHTML = `
+        <div class="top">
+          <strong>${day}</strong>
+          <span>${summary.attempts} Würfe</span>
+        </div>
+        <div class="bottom">${summary.made}/${summary.attempts} • ${formatPct(summary.made, summary.attempts)}</div>
+      `;
+      item.addEventListener("click", () => {
+        selectedDate = day;
+        ensureDate(selectedDate);
+        selectedSessionId = currentDay().sessions[0]?.id || null;
+        render();
+      });
+      dayListEl.appendChild(item);
+    }
+  }
+
+  function updateStats() {
+    const session = currentSession();
+    const sessionSummary = summarizeShots(session ? session.shots : []);
+    const daySummary = summarizeSessions(currentDay().sessions);
+    const allSummary = allTimeSummary();
+
+    sessionStatsEl.textContent = session
+      ? `Session: ${sessionSummary.made}/${sessionSummary.attempts} (${formatPct(sessionSummary.made, sessionSummary.attempts)})`
+      : "Session: -";
+
+    dayStatsEl.textContent = `Tag: ${daySummary.made}/${daySummary.attempts} (${formatPct(daySummary.made, daySummary.attempts)})`;
+    allTimeStatsEl.textContent = `All Time: ${allSummary.made}/${allSummary.attempts} (${formatPct(allSummary.made, allSummary.attempts)})`;
+
+    currentDateLabel.textContent = selectedDate;
+    currentSessionLabel.textContent = session ? session.name : "";
+
+    if (selectedZone === null) {
+      selectedZoneInfo.textContent = "Keine Zone gewählt";
+      zoneStatsEl.textContent = "Zone: -";
+      return;
+    }
+
+    const z = ZONES[selectedZone];
+    const sessionZone = sessionSummary.zones[selectedZone] || { made: 0, attempts: 0 };
+    const allZone = allSummary.zones[selectedZone] || { made: 0, attempts: 0 };
+
+    selectedZoneInfo.innerHTML = `
+      <strong>${z.name}</strong><br>
+      Session: ${sessionZone.made}/${sessionZone.attempts} (${formatPct(sessionZone.made, sessionZone.attempts)})<br>
+      All Time: ${allZone.made}/${allZone.attempts} (${formatPct(allZone.made, allZone.attempts)})
+    `;
+
+    zoneStatsEl.textContent = `Zone: ${z.short}`;
+  }
+
+  function render() {
+    ensureDate(selectedDate);
+
+    dateInput.value = selectedDate;
+    if (!selectedSessionId || !currentDay().sessions.some(s => s.id === selectedSessionId)) {
+      selectedSessionId = currentDay().sessions[0]?.id || null;
+    }
+
+    updateSessionSelect();
+    updateDayList();
+    updateStats();
+    renderCourt();
+    renderSessionHeatmap();
+    renderAllTimeHeatmap();
+  }
+
+  function recordShot(made) {
+    const session = currentSession();
+    if (!session) return;
+    if (selectedZone === null) {
+      alert("Erst eine Zone auf dem Court wählen.");
+      return;
+    }
+
+    snapshotState();
+
+    session.shots.push({
+      zone: selectedZone,
+      made,
+      ts: Date.now(),
+      date: selectedDate,
+    });
+
+    saveDB();
+    render();
+  }
+
+  function deleteCurrentSession() {
+    const day = currentDay();
+    const session = currentSession();
+    if (!session) return;
+    if (!confirm("Session wirklich löschen?")) return;
+
+    snapshotState();
+
+    day.sessions = day.sessions.filter(s => s.id !== session.id);
+    if (!day.sessions.length) day.sessions.push(makeSession("Session 1"));
+    selectedSessionId = day.sessions[0].id;
+
+    saveDB();
+    render();
+  }
+
+  function renameCurrentSession() {
+    const session = currentSession();
+    if (!session) return;
+
+    const nextName = prompt("Neuer Session-Name:", session.name);
+    if (nextName === null) return;
+
+    snapshotState();
+    session.name = nextName.trim() || session.name;
+
+    saveDB();
+    render();
+  }
+
+  function newSession() {
+    snapshotState();
+
+    const day = currentDay();
+    const defaultName = `Session ${day.sessions.length + 1}`;
+    const name = prompt("Session-Name:", defaultName);
+    const session = makeSession((name && name.trim()) ? name.trim() : defaultName);
+
+    day.sessions.push(session);
+    selectedSessionId = session.id;
+
+    saveDB();
+    render();
+  }
+
+  function deleteCurrentDay() {
+    if (!confirm("Tag wirklich löschen?")) return;
+
+    snapshotState();
+
+    delete db[selectedDate];
+    const remaining = allDaysSorted();
+    selectedDate = remaining.length ? remaining[0] : isoToday();
+
+    ensureDate(selectedDate);
+    selectedSessionId = currentDay().sessions[0]?.id || null;
+
+    saveDB();
+    render();
+  }
+
+  function exportCSV() {
+    const rows = [["date", "session", "zone", "zone_name", "made", "ts"]];
+
+    for (const day of allDaysSorted()) {
+      for (const session of db[day].sessions || []) {
+        for (const shot of session.shots || []) {
+          const zone = ZONES[shot.zone];
+          rows.push([
+            day,
+            session.name,
+            zone ? zone.short : String(shot.zone),
+            zone ? zone.name : "",
+            shot.made ? "1" : "0",
+            shot.ts || "",
+          ]);
+        }
+      }
+    }
+
+    const csv = rows
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "3pt-tracker-export.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  prevDayBtn.addEventListener("click", () => {
+    const d = new Date(selectedDate + "T12:00:00");
+    d.setDate(d.getDate() - 1);
+    selectedDate = isoFromDate(d);
+    ensureDate(selectedDate);
+    selectedSessionId = currentDay().sessions[0]?.id || null;
+    render();
+  });
+
+  nextDayBtn.addEventListener("click", () => {
+    const d = new Date(selectedDate + "T12:00:00");
+    d.setDate(d.getDate() + 1);
+    selectedDate = isoFromDate(d);
+    ensureDate(selectedDate);
+    selectedSessionId = currentDay().sessions[0]?.id || null;
+    render();
+  });
+
+  dateInput.addEventListener("change", (e) => {
+    selectedDate = e.target.value;
+    ensureDate(selectedDate);
+    selectedSessionId = currentDay().sessions[0]?.id || null;
+    render();
+  });
+
+  sessionSelect.addEventListener("change", (e) => {
+    selectedSessionId = e.target.value;
+    render();
+  });
+
+  newSessionBtn.addEventListener("click", newSession);
+  renameSessionBtn.addEventListener("click", renameCurrentSession);
+  deleteSessionBtn.addEventListener("click", deleteCurrentSession);
+  deleteDayBtn.addEventListener("click", deleteCurrentDay);
+  exportBtn.addEventListener("click", exportCSV);
+  undoBtn.addEventListener("click", undo);
+
+  hitBtn.addEventListener("click", () => recordShot(true));
+  missBtn.addEventListener("click", () => recordShot(false));
+
+  migrateDB();
+  ensureDate(selectedDate);
+  selectedSessionId = currentDay().sessions[0]?.id || null;
+  undoBtn.disabled = true;
+  render();
+});  let snapshot = null;
 
   function loadDB() {
     const raw = localStorage.getItem(STORAGE_KEY);
