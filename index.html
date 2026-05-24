@@ -7,34 +7,118 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="panel">
-        <h2>Datum</h2>
-        <div class="row">
-          <button id="prevDayBtn">◀</button>
-          <input id="dateInput" type="date" />
-          <button id="nextDayBtn">▶</button>
-        </div>
-        <button id="deleteDayBtn" class="wide">Tag löschen</button>
-        <button id="exportBtn" class="wide">Export CSV</button>
-        <button id="undoBtn" class="wide">Undo</button>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="panel">
+      <h2>Datum</h2>
+      <div class="date-row">
+        <button id="prevDayBtn">◀</button>
+        <input type="date" id="dateInput" />
+        <button id="nextDayBtn">▶</button>
+      </div>
+      <button id="deleteDayBtn" class="danger-btn full">Tag löschen</button>
+      <button id="exportBtn" class="full">CSV Export</button>
+      <button id="undoBtn" class="full">Undo</button>
+    </div>
+
+    <div class="panel">
+      <h2>Session</h2>
+      <select id="sessionSelect"></select>
+
+      <div class="session-buttons">
+        <button id="newSessionBtn">Neue Session</button>
+        <button id="renameSessionBtn">Umbenennen</button>
       </div>
 
-      <div class="panel">
-        <h2>Session</h2>
-        <select id="sessionSelect"></select>
-        <div class="row">
-          <button id="newSessionBtn">Neue</button>
-          <button id="renameSessionBtn">Umbenennen</button>
+      <button id="deleteSessionBtn" class="danger-btn full">Session löschen</button>
+    </div>
+
+    <div class="panel">
+      <h2>Zone</h2>
+      <div id="selectedZoneInfo" class="zone-info">Keine Zone gewählt</div>
+      <div class="shot-buttons">
+        <button id="hitBtn" class="hit-btn">Treffer</button>
+        <button id="missBtn" class="miss-btn">Fehlwurf</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Stats</h2>
+      <div id="sessionStats" class="stat-line"></div>
+      <div id="dayStats" class="stat-line"></div>
+      <div id="allStats" class="stat-line"></div>
+      <div id="zoneStats" class="stat-line"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Vergangene Tage</h2>
+      <div id="dayList" class="day-list"></div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="main-header">
+      <div>
+        <h1>3PT Tracker Heatmap</h1>
+        <p id="currentDateLabel"></p>
+      </div>
+      <div id="currentSessionLabel"></div>
+    </header>
+
+    <section class="main-grid">
+      <div class="card big-card">
+        <div class="card-title">Shot Selection</div>
+
+        <div class="court-wrapper">
+          <img src="court.png" class="court-image" alt="Basketball Court" />
+          <svg
+            id="interactiveSvg"
+            class="heatmap-svg"
+            viewBox="0 0 1000 680"
+            preserveAspectRatio="xMidYMid meet"
+          ></svg>
         </div>
-        <button id="deleteSessionBtn" class="wide">Session löschen</button>
+
+        <div class="court-hint">
+          Zone anklicken → Treffer oder Fehlwurf drücken
+        </div>
       </div>
 
-      <div class="panel">
-        <h2>Zone</h2>
-        <div id="selectedZoneInfo" class="zone-info">Keine Zone gewählt</div>
-        <div class="row">
+      <div class="card">
+        <div class="card-title">Session Heatmap</div>
+        <div class="court-wrapper small-court">
+          <img src="court.png" class="court-image" alt="Basketball Court" />
+          <svg
+            id="sessionSvg"
+            class="heatmap-svg"
+            viewBox="0 0 1000 680"
+            preserveAspectRatio="xMidYMid meet"
+          ></svg>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">All Time Heatmap</div>
+        <div class="court-wrapper small-court">
+          <img src="court.png" class="court-image" alt="Basketball Court" />
+          <svg
+            id="allSvg"
+            class="heatmap-svg"
+            viewBox="0 0 1000 680"
+            preserveAspectRatio="xMidYMid meet"
+          ></svg>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>        <div class="row">
           <button id="hitBtn" class="hit">Treffer</button>
           <button id="missBtn" class="miss">Fehlwurf</button>
         </div>
