@@ -53,22 +53,188 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const ZONES = [
-    { id: 0, name: "Corner Left", short: "CL", x: 0, y: 0, w: 145, h: 680 },
-    { id: 1, name: "Wing Left", short: "WL", x: 145, y: 0, w: 210, h: 350 },
-    { id: 2, name: "Top", short: "TOP", x: 355, y: 0, w: 290, h: 350 },
-    { id: 3, name: "Wing Right", short: "WR", x: 645, y: 0, w: 210, h: 350 },
-    { id: 4, name: "Corner Right", short: "CR", x: 855, y: 0, w: 145, h: 680 },
-
-    { id: 5, name: "Mid Left Upper", short: "MLU", x: 145, y: 350, w: 210, h: 170 },
-    { id: 6, name: "Mid Left Lower", short: "MLL", x: 145, y: 520, w: 210, h: 160 },
-    { id: 7, name: "Free Throw", short: "FT", x: 355, y: 350, w: 290, h: 170 },
-    { id: 8, name: "Mid Right Lower", short: "MRL", x: 645, y: 520, w: 210, h: 160 },
-    { id: 9, name: "Mid Right Upper", short: "MRU", x: 645, y: 350, w: 210, h: 170 },
-
-    { id: 10, name: "Paint UL", short: "PUL", x: 355, y: 520, w: 145, h: 80 },
-    { id: 11, name: "Paint UR", short: "PUR", x: 500, y: 520, w: 145, h: 80 },
-    { id: 12, name: "Paint LL", short: "PLL", x: 355, y: 600, w: 145, h: 80 },
-    { id: 13, name: "Paint LR", short: "PLR", x: 500, y: 600, w: 145, h: 80 }
+    {
+      id: 0,
+      name: "Corner Left",
+      short: "CL",
+      points: [
+        [0, 0],
+        [145, 0],
+        [145, 470],
+        [0, 470]
+      ],
+      labelX: 72,
+      labelY: 205
+    },
+    {
+      id: 1,
+      name: "Wing Left",
+      short: "WL",
+      points: [
+        [145, 0],
+        [355, 0],
+        [330, 470],
+        [145, 470]
+      ],
+      labelX: 245,
+      labelY: 190
+    },
+    {
+      id: 2,
+      name: "Top",
+      short: "TOP",
+      points: [
+        [355, 0],
+        [645, 0],
+        [670, 470],
+        [330, 470]
+      ],
+      labelX: 500,
+      labelY: 175
+    },
+    {
+      id: 3,
+      name: "Wing Right",
+      short: "WR",
+      points: [
+        [645, 0],
+        [855, 0],
+        [855, 470],
+        [670, 470]
+      ],
+      labelX: 755,
+      labelY: 190
+    },
+    {
+      id: 4,
+      name: "Corner Right",
+      short: "CR",
+      points: [
+        [855, 0],
+        [1000, 0],
+        [1000, 470],
+        [855, 470]
+      ],
+      labelX: 928,
+      labelY: 205
+    },
+    {
+      id: 5,
+      name: "Mid Left Upper",
+      short: "MLU",
+      points: [
+        [145, 470],
+        [330, 470],
+        [330, 560],
+        [145, 560]
+      ],
+      labelX: 238,
+      labelY: 510
+    },
+    {
+      id: 6,
+      name: "Mid Left Lower",
+      short: "MLL",
+      points: [
+        [145, 560],
+        [330, 560],
+        [330, 680],
+        [145, 680]
+      ],
+      labelX: 238,
+      labelY: 620
+    },
+    {
+      id: 7,
+      name: "Free Throw",
+      short: "FT",
+      points: [
+        [330, 470],
+        [670, 470],
+        [670, 600],
+        [330, 600]
+      ],
+      labelX: 500,
+      labelY: 540
+    },
+    {
+      id: 8,
+      name: "Mid Right Lower",
+      short: "MRL",
+      points: [
+        [670, 560],
+        [855, 560],
+        [855, 680],
+        [670, 680]
+      ],
+      labelX: 762,
+      labelY: 620
+    },
+    {
+      id: 9,
+      name: "Mid Right Upper",
+      short: "MRU",
+      points: [
+        [670, 470],
+        [855, 470],
+        [855, 560],
+        [670, 560]
+      ],
+      labelX: 762,
+      labelY: 510
+    },
+    {
+      id: 10,
+      name: "Paint UL",
+      short: "PUL",
+      points: [
+        [330, 600],
+        [500, 600],
+        [500, 640],
+        [330, 640]
+      ],
+      labelX: 415,
+      labelY: 620
+    },
+    {
+      id: 11,
+      name: "Paint UR",
+      short: "PUR",
+      points: [
+        [500, 600],
+        [670, 600],
+        [670, 640],
+        [500, 640]
+      ],
+      labelX: 585,
+      labelY: 620
+    },
+    {
+      id: 12,
+      name: "Paint LL",
+      short: "PLL",
+      points: [
+        [330, 640],
+        [500, 640],
+        [500, 680],
+        [330, 680]
+      ],
+      labelX: 415,
+      labelY: 660
+    },
+    {
+      id: 13,
+      name: "Paint LR",
+      short: "PLR",
+      points: [
+        [500, 640],
+        [670, 640],
+        [670, 680],
+        [500, 680]
+      ],
+      labelX: 585,
+      labelY: 660
+    }
   ];
 
   boot();
@@ -110,6 +276,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${y}-${m}-${day}`;
   }
 
+  function shiftISO(dateISO, deltaDays) {
+    const [y, m, d] = dateISO.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + deltaDays);
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+  }
+
   function ensureDay(date) {
     if (!db[date]) {
       db[date] = { sessions: [] };
@@ -122,7 +298,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function currentSession() {
-    return currentDay().sessions.find(s => s.id === selectedSessionId);
+    const sess = currentDay().sessions.find((s) => s.id === selectedSessionId);
+    return sess || currentDay().sessions[0];
   }
 
   function createSession(name) {
@@ -156,7 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const sessions = currentDay().sessions;
 
-    if (!sessions.some(s => s.id === selectedSessionId)) {
+    if (!sessions.some((s) => s.id === selectedSessionId)) {
       selectedSessionId = sessions[0].id;
     }
 
@@ -172,8 +349,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function getAllShots() {
     return Object.values(db)
-      .flatMap(day => day.sessions)
-      .flatMap(session => session.shots);
+      .flatMap((day) => day.sessions)
+      .flatMap((session) => session.shots);
   }
 
   function summarizeShots(shots) {
@@ -190,16 +367,18 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const shot of shots) {
       result.attempts++;
       if (shot.made) result.made++;
-      result.zones[shot.zone].attempts++;
-      if (shot.made) result.zones[shot.zone].made++;
+      if (result.zones[shot.zone]) {
+        result.zones[shot.zone].attempts++;
+        if (shot.made) result.zones[shot.zone].made++;
+      }
     }
 
     return result;
   }
 
   function getZoneStats(shots, zoneId) {
-    const arr = shots.filter(s => s.zone === zoneId);
-    const made = arr.filter(s => s.made).length;
+    const arr = shots.filter((s) => s.zone === zoneId);
+    const made = arr.filter((s) => s.made).length;
     const attempts = arr.length;
     const pct = attempts ? Math.round((made / attempts) * 100) : 0;
     return { made, attempts, pct };
@@ -223,6 +402,53 @@ document.addEventListener("DOMContentLoaded", () => {
     return el;
   }
 
+  function pointInPolygon(x, y, points) {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const xi = points[i][0], yi = points[i][1];
+      const xj = points[j][0], yj = points[j][1];
+
+      const intersect =
+        ((yi > y) !== (yj > y)) &&
+        (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi);
+
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function findZoneByPoint(nx, ny) {
+    const x = nx * 1000;
+    const y = ny * 680;
+
+    for (const zone of ZONES) {
+      if (pointInPolygon(x, y, zone.points)) {
+        return zone.id;
+      }
+    }
+
+    let closest = null;
+    let bestDist = Infinity;
+
+    for (const zone of ZONES) {
+      const cx = zone.labelX;
+      const cy = zone.labelY;
+      const dx = x - cx;
+      const dy = y - cy;
+      const d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        closest = zone.id;
+      }
+    }
+
+    return closest;
+  }
+
+  function polygonPointsString(points) {
+    return points.map(([x, y]) => `${x},${y}`).join(" ");
+  }
+
   function renderSvg(svg, shots, interactive = false) {
     svg.innerHTML = "";
 
@@ -230,11 +456,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const stats = getZoneStats(shots, zone.id);
       const colors = zoneColor(stats.pct);
 
-      const rect = createSvgEl("rect", {
-        x: zone.x,
-        y: zone.y,
-        width: zone.w,
-        height: zone.h,
+      const poly = createSvgEl("polygon", {
+        points: polygonPointsString(zone.points),
         fill: colors.fill,
         stroke: colors.stroke,
         "stroke-width": selectedZone === zone.id && interactive ? "5" : "2",
@@ -244,19 +467,19 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (interactive) {
-        rect.style.cursor = "pointer";
-        rect.addEventListener("click", (e) => {
+        poly.style.cursor = "pointer";
+        poly.addEventListener("click", (e) => {
           e.stopPropagation();
           selectedZone = zone.id;
           renderAll();
         });
       }
 
-      svg.appendChild(rect);
+      svg.appendChild(poly);
 
       const label = createSvgEl("text", {
-        x: zone.x + zone.w / 2,
-        y: zone.y + zone.h / 2 - 10,
+        x: zone.labelX,
+        y: zone.labelY - 10,
         "text-anchor": "middle",
         class: "zone-label"
       });
@@ -264,8 +487,8 @@ document.addEventListener("DOMContentLoaded", () => {
       svg.appendChild(label);
 
       const pct = createSvgEl("text", {
-        x: zone.x + zone.w / 2,
-        y: zone.y + zone.h / 2 + 22,
+        x: zone.labelX,
+        y: zone.labelY + 22,
         "text-anchor": "middle",
         class: "zone-percent"
       });
@@ -274,49 +497,35 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (interactive) {
-      svg.addEventListener("click", (e) => {
-        const rect = svg.getBoundingClientRect();
-        const nx = (e.clientX - rect.left) / rect.width;
-        const ny = (e.clientY - rect.top) / rect.height;
-        const zone = zoneAtPoint(nx, ny);
-        if (zone !== null) {
-          selectedZone = zone;
-          renderAll();
-        }
-      }, { once: true });
+      svg.addEventListener(
+        "click",
+        (e) => {
+          const rect = svg.getBoundingClientRect();
+          const nx = (e.clientX - rect.left) / rect.width;
+          const ny = (e.clientY - rect.top) / rect.height;
+          const zone = findZoneByPoint(nx, ny);
+          if (zone !== null) {
+            selectedZone = zone;
+            renderAll();
+          }
+        },
+        { once: true }
+      );
     }
-  }
-
-  function zoneAtPoint(nx, ny) {
-    const x = nx * 1000;
-    const y = ny * 680;
-
-    for (const zone of ZONES) {
-      if (
-        x >= zone.x &&
-        x <= zone.x + zone.w &&
-        y >= zone.y &&
-        y <= zone.y + zone.h
-      ) {
-        return zone.id;
-      }
-    }
-
-    return null;
   }
 
   function renderStats() {
     const session = currentSession();
     const sessionSum = summarizeShots(session ? session.shots : []);
-    sessionStats.textContent = `Session: ${sessionSum.made}/${sessionSum.attempts} (${sessionSum.attempts ? Math.round(sessionSum.made / sessionSum.attempts * 100) : 0}%)`;
+    sessionStats.textContent = `Session: ${sessionSum.made}/${sessionSum.attempts} (${sessionSum.attempts ? Math.round((sessionSum.made / sessionSum.attempts) * 100) : 0}%)`;
 
-    const dayShots = currentDay().sessions.flatMap(s => s.shots);
+    const dayShots = currentDay().sessions.flatMap((s) => s.shots);
     const daySum = summarizeShots(dayShots);
-    dayStats.textContent = `Tag: ${daySum.made}/${daySum.attempts} (${daySum.attempts ? Math.round(daySum.made / daySum.attempts * 100) : 0}%)`;
+    dayStats.textContent = `Tag: ${daySum.made}/${daySum.attempts} (${daySum.attempts ? Math.round((daySum.made / daySum.attempts) * 100) : 0}%)`;
 
     const allShots = getAllShots();
     const allSum = summarizeShots(allShots);
-    allStats.textContent = `All Time: ${allSum.made}/${allSum.attempts} (${allSum.attempts ? Math.round(allSum.made / allSum.attempts * 100) : 0}%)`;
+    allStats.textContent = `All Time: ${allSum.made}/${allSum.attempts} (${allSum.attempts ? Math.round((allSum.made / allSum.attempts) * 100) : 0}%)`;
 
     if (selectedZone !== null) {
       const zone = ZONES[selectedZone];
@@ -454,7 +663,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveHistory();
 
     currentDay().sessions = currentDay().sessions.filter(
-      s => s.id !== currentSession().id
+      (s) => s.id !== currentSession().id
     );
 
     ensureDay(selectedDate);
@@ -485,9 +694,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   prevDayBtn.onclick = () => {
-    const d = new Date(selectedDate + "T12:00:00");
-    d.setDate(d.getDate() - 1);
-    selectedDate = d.toISOString().slice(0, 10);
+    selectedDate = shiftISO(selectedDate, -1);
     ensureDay(selectedDate);
     if (currentDay().sessions.length === 0) {
       createSession("Session 1");
@@ -498,9 +705,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   nextDayBtn.onclick = () => {
-    const d = new Date(selectedDate + "T12:00:00");
-    d.setDate(d.getDate() + 1);
-    selectedDate = d.toISOString().slice(0, 10);
+    selectedDate = shiftISO(selectedDate, 1);
     ensureDay(selectedDate);
     if (currentDay().sessions.length === 0) {
       createSession("Session 1");
@@ -537,7 +742,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    const csv = rows.map(r => r.join(",")).join("\n");
+    const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
 
