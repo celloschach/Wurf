@@ -437,6 +437,10 @@ select:focus {
   gap: 1.25rem;
 }
 
+.heatmap-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .analytics-card {
   padding: 1rem;
   min-width: 0;
@@ -444,6 +448,22 @@ select:focus {
 
 .analytics-header {
   margin-bottom: 0.8rem;
+}
+
+.analytics-header > div h2,
+.analytics-header > div span {
+  display: block;
+}
+
+.range-select {
+  width: auto;
+  min-width: 9rem;
+  min-height: 2.25rem;
+  color: #05070a;
+  background: var(--accent);
+  border: 0;
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .mini-heatmap {
@@ -525,6 +545,10 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .heatmap-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .sidebar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -547,6 +571,15 @@ select:focus {
   .heatmap-grid,
   .charts-grid {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .range-select {
+    width: 100%;
   }
 
   .brand-card,

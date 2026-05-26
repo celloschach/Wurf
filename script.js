@@ -132,8 +132,11 @@ const els = {
   makeBtn: document.getElementById("makeBtn"),
   missBtn: document.getElementById("missBtn"),
   sessionHeatmap: document.getElementById("sessionHeatmap"),
+  rangeHeatmap: document.getElementById("rangeHeatmap"),
   allTimeHeatmap: document.getElementById("allTimeHeatmap"),
   sessionHeatmapMeta: document.getElementById("sessionHeatmapMeta"),
+  rangeHeatmapMeta: document.getElementById("rangeHeatmapMeta"),
+  rangeHeatmapSelect: document.getElementById("rangeHeatmapSelect"),
   allTimeHeatmapMeta: document.getElementById("allTimeHeatmapMeta"),
   sessionChart: document.getElementById("sessionChart"),
   dailyChart: document.getElementById("dailyChart"),
@@ -143,6 +146,7 @@ let state = loadState();
 let selectedDate = state.settings.selectedDate || localDateKey();
 let selectedSessionId = state.settings.selectedSessionId || null;
 let selectedZoneId = null;
+let selectedRange = state.settings.selectedRange || "today";
 let courtImageLoaded = false;
 let sessionChart;
 let dailyChart;
@@ -157,6 +161,12 @@ function localDateKey(date = new Date()) {
 function dateFromKey(key) {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function shiftDateKey(key, offset) {
+  const date = dateFromKey(key);
+  date.setDate(date.getDate() + offset);
+  return localDateKey(date);
 }
 
 function formatDateLabel(key) {
@@ -191,6 +201,7 @@ function loadState() {
 function saveState() {
   state.settings.selectedDate = selectedDate;
   state.settings.selectedSessionId = selectedSessionId;
+  state.settings.selectedRange = selectedRange;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -256,6 +267,18 @@ function allShots() {
 function dayShots(dateKey = selectedDate) {
   const day = ensureDay(dateKey);
   return day.sessionOrder.flatMap((sessionId) => day.sessions[sessionId]?.shots || []);
+}
+
+function storedDayShots(dateKey) {
+  const day = state.days[dateKey];
+  if (!day) return [];
+  return day.sessionOrder.flatMap((sessionId) => day.sessions[sessionId]?.shots || []);
+}
+
+function shotsBetween(startKey, endKey) {
+  return Object.keys(state.days)
+    .filter((dateKey) => dateKey >= startKey && dateKey <= endKey)
+    .flatMap((dateKey) => storedDayShots(dateKey));
 }
 
 function statsFor(shots, zoneId = null) {
@@ -453,11 +476,39 @@ function renderHeatmap(container, shots) {
 
 function renderHeatmaps() {
   const sessionShots = currentSession().shots;
+  const rangeShots = getRangeHeatmapShots();
   const lifetimeShots = allShots();
   els.sessionHeatmapMeta.textContent = `${sessionShots.length} shot${sessionShots.length === 1 ? "" : "s"}`;
+  els.rangeHeatmapSelect.value = selectedRange;
+  els.rangeHeatmapMeta.textContent = `${getRangeHeatmapLabel()} • ${rangeShots.length} shot${rangeShots.length === 1 ? "" : "s"}`;
   els.allTimeHeatmapMeta.textContent = `${lifetimeShots.length} shot${lifetimeShots.length === 1 ? "" : "s"}`;
   renderHeatmap(els.sessionHeatmap, sessionShots);
+  renderHeatmap(els.rangeHeatmap, rangeShots);
   renderHeatmap(els.allTimeHeatmap, lifetimeShots);
+}
+
+function getRangeHeatmapShots() {
+  if (selectedRange === "previous-day") {
+    return storedDayShots(shiftDateKey(selectedDate, -1));
+  }
+  if (selectedRange === "last-week") {
+    return shotsBetween(shiftDateKey(selectedDate, -6), selectedDate);
+  }
+  if (selectedRange === "last-month") {
+    return shotsBetween(shiftDateKey(selectedDate, -29), selectedDate);
+  }
+  return dayShots(selectedDate);
+}
+
+function getRangeHeatmapLabel() {
+  if (selectedRange === "previous-day") return formatDateLabel(shiftDateKey(selectedDate, -1));
+  if (selectedRange === "last-week") {
+    return `${formatDateLabel(shiftDateKey(selectedDate, -6))} - ${formatDateLabel(selectedDate)}`;
+  }
+  if (selectedRange === "last-month") {
+    return `${formatDateLabel(shiftDateKey(selectedDate, -29))} - ${formatDateLabel(selectedDate)}`;
+  }
+  return formatDateLabel(selectedDate);
 }
 
 function chartDefaults() {
@@ -761,6 +812,7 @@ function undoLast() {
   state.settings = restored.settings || {};
   selectedDate = state.settings.selectedDate || localDateKey();
   selectedSessionId = state.settings.selectedSessionId || null;
+  selectedRange = state.settings.selectedRange || "today";
   selectedZoneId = null;
   saveState();
   renderAll();
@@ -815,6 +867,11 @@ function bindEvents() {
   });
   els.makeBtn.addEventListener("click", () => recordShot(true));
   els.missBtn.addEventListener("click", () => recordShot(false));
+  els.rangeHeatmapSelect.addEventListener("change", (event) => {
+    selectedRange = event.target.value;
+    saveState();
+    renderHeatmaps();
+  });
   els.undoBtn.addEventListener("click", undoLast);
   els.exportBtn.addEventListener("click", exportCsv);
   els.statusBtn.addEventListener("click", () => {

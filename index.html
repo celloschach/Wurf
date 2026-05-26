@@ -123,6 +123,21 @@
           </article>
           <article class="analytics-card">
             <div class="analytics-header">
+              <div>
+                <h2>Range Heatmap</h2>
+                <span id="rangeHeatmapMeta">0 shots</span>
+              </div>
+              <select id="rangeHeatmapSelect" class="range-select" aria-label="Heatmap range">
+                <option value="today">Dieser Tag</option>
+                <option value="previous-day">Letzter Tag</option>
+                <option value="last-week">Letzte Woche</option>
+                <option value="last-month">Letzter Monat</option>
+              </select>
+            </div>
+            <div id="rangeHeatmap" class="mini-heatmap"></div>
+          </article>
+          <article class="analytics-card">
+            <div class="analytics-header">
               <h2>All-Time Heatmap</h2>
               <span id="allTimeHeatmapMeta">0 shots</span>
             </div>
