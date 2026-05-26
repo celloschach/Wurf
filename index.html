@@ -2,124 +2,153 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>3PT Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3PT Shot Tracker</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-<div class="app">
-
-  <aside class="sidebar">
-    <div class="panel">
-      <h2>Datum</h2>
-      <div class="date-row">
-        <button id="prevDayBtn">◀</button>
-        <input type="date" id="dateInput" />
-        <button id="nextDayBtn">▶</button>
-      </div>
-      <button id="deleteDayBtn" class="danger-btn full">Tag löschen</button>
-      <button id="exportBtn" class="full">CSV Export</button>
-      <button id="undoBtn" class="full">Undo</button>
-    </div>
-
-    <div class="panel">
-      <h2>Session</h2>
-      <select id="sessionSelect"></select>
-      <div class="session-buttons">
-        <button id="newSessionBtn">Neue Session</button>
-        <button id="renameSessionBtn">Umbenennen</button>
-      </div>
-      <button id="deleteSessionBtn" class="danger-btn full">Session löschen</button>
-    </div>
-
-    <div class="panel">
-      <h2>Zone</h2>
-      <div id="selectedZoneInfo" class="zone-info">Keine Zone gewählt</div>
-      <div class="shot-buttons">
-        <button id="hitBtn" class="hit-btn">Treffer</button>
-        <button id="missBtn" class="miss-btn">Fehlwurf</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Stats</h2>
-      <div id="sessionStats" class="stat-line"></div>
-      <div id="dayStats" class="stat-line"></div>
-      <div id="allStats" class="stat-line"></div>
-      <div id="zoneStats" class="stat-line"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Status</h2>
-      <button id="statusBtn" class="full">Status prüfen</button>
-      <div id="statusBox" class="status-box">Status noch nicht geprüft</div>
-    </div>
-
-    <div class="panel">
-      <h2>Vergangene Tage</h2>
-      <div id="dayList" class="day-list"></div>
-    </div>
-  </aside>
-
-  <main class="main-content">
-    <header class="main-header">
-      <div>
-        <h1>3PT Tracker Heatmap</h1>
-        <p id="currentDateLabel"></p>
-      </div>
-      <div id="currentSessionLabel"></div>
-    </header>
-
-    <section class="main-grid">
-      <div class="card big-card">
-        <div class="card-title">Shot Selection</div>
-
-        <div class="court-wrapper">
-          <img src="court.png" class="court-image" alt="Basketball Court" id="courtImage" />
-          <svg
-            id="interactiveSvg"
-            class="heatmap-svg"
-            viewBox="0 0 1000 680"
-            preserveAspectRatio="xMidYMid meet"
-          ></svg>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand-card">
+        <div>
+          <span class="brand-tag">3PT</span>
+          <h1>Shot Lab</h1>
         </div>
-
-        <div class="court-hint">
-          Zone anklicken → Treffer oder Fehlwurf drücken
-        </div>
+        <p>Professionelles Basketball Heatmap-Tracking.</p>
       </div>
 
-      <div class="card">
-        <div class="card-title">Session Heatmap</div>
-        <div class="court-wrapper small-court">
-          <img src="court.png" class="court-image" alt="Basketball Court" />
-          <svg
-            id="sessionSvg"
-            class="heatmap-svg"
-            viewBox="0 0 1000 680"
-            preserveAspectRatio="xMidYMid meet"
-          ></svg>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Datum</h2>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">All Time Heatmap</div>
-        <div class="court-wrapper small-court">
-          <img src="court.png" class="court-image" alt="Basketball Court" />
-          <svg
-            id="allSvg"
-            class="heatmap-svg"
-            viewBox="0 0 1000 680"
-            preserveAspectRatio="xMidYMid meet"
-          ></svg>
+        <div class="date-row">
+          <button id="prevDayBtn" class="icon-btn" aria-label="Vorheriger Tag">←</button>
+          <input type="date" id="dateInput" />
+          <button id="nextDayBtn" class="icon-btn" aria-label="Nächster Tag">→</button>
         </div>
+        <div class="panel-actions">
+          <button id="deleteDayBtn" class="danger">Tag löschen</button>
+          <button id="saveNoteBtn" class="side">Notiz speichern</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Session</h2>
+        </div>
+        <div class="session-row">
+          <select id="sessionSelect" aria-label="Session auswählen"></select>
+          <button id="newSessionBtn" class="accent">Neu</button>
+        </div>
+        <div class="session-row">
+          <button id="renameSessionBtn" class="side">Umbenennen</button>
+          <button id="deleteSessionBtn" class="danger">Löschen</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Aktive Zone</h2>
+        </div>
+        <div id="selectedZoneInfo" class="zone-card">Keine Zone gewählt</div>
+        <div class="shot-row">
+          <button id="hitBtn" class="success">Treffer</button>
+          <button id="missBtn" class="warning">Fehlwurf</button>
+        </div>
+      </section>
+
+      <section class="panel stats-panel">
+        <div class="panel-head">
+          <h2>Live Stats</h2>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-block"><span>Session</span><strong id="sessionStats">0/0 (0%)</strong></div>
+          <div class="stat-block"><span>Tag</span><strong id="dayStats">0/0 (0%)</strong></div>
+          <div class="stat-block"><span>All Time</span><strong id="allStats">0/0 (0%)</strong></div>
+          <div class="stat-block"><span>Zone</span><strong id="zoneStats">0/0 (0%)</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Notiz</h2></div>
+        <textarea id="dayNote" rows="5" placeholder="Trainingsnotiz..."></textarea>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Status</h2></div>
+        <button id="statusBtn" class="side">Status prüfen</button>
+        <pre id="statusBox" class="status-box">Status bereit.</pre>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Vergangene Tage</h2></div>
+        <div id="dayList" class="day-list"></div>
+      </section>
+
+      <div class="sidebar-footer">
+        <button id="exportBtn" class="accent full">CSV Export</button>
+        <button id="undoBtn" class="side full">Undo</button>
       </div>
-    </section>
-  </main>
+    </aside>
 
-</div>
+    <main class="main-column">
+      <header class="main-head">
+        <div>
+          <p class="eyebrow">Half Court Analytics</p>
+          <h2>Basketball Shot Lab</h2>
+          <p class="subtitle">Interaktiver Court, Zone-Heatmaps, Session-Analyse und Trends.</p>
+        </div>
+        <div class="header-card">
+          <span>Datum</span>
+          <strong id="currentDateLabel"></strong>
+          <span>Session</span>
+          <strong id="currentSessionLabel"></strong>
+        </div>
+      </header>
 
-<script src="script.js"></script>
+      <section class="grid-2">
+        <article class="card court-card">
+          <div class="card-head">
+            <span>Interaktiver Court</span>
+            <small>Tippe einen Bereich und notiere Treffer / Fehlwurf.</small>
+          </div>
+          <div class="court-wrapper">
+            <img src="court.png" id="courtImage" alt="Basketball Court" />
+            <svg id="interactiveSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </article>
+
+        <article class="card mini-card">
+          <div class="card-head"><span>Session Heatmap</span></div>
+          <div class="court-wrapper mini">
+            <img src="court.png" alt="Court" />
+            <svg id="sessionSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </article>
+
+        <article class="card mini-card">
+          <div class="card-head"><span>All-Time Heatmap</span></div>
+          <div class="court-wrapper mini">
+            <img src="court.png" alt="Court" />
+            <svg id="allSvg" class="heatmap-svg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </article>
+      </section>
+
+      <section class="chart-grid">
+        <article class="card chart-card">
+          <div class="card-head"><span>Session Progression</span></div>
+          <canvas id="sessionChart"></canvas>
+        </article>
+        <article class="card chart-card">
+          <div class="card-head"><span>Daily Trend</span></div>
+          <canvas id="dailyChart"></canvas>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js"></script>
 </body>
-        </html>
+</html>
