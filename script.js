@@ -1,586 +1,807 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const STORAGE_KEY = "worf-3pt-tracker";
+const STORAGE_KEY = "arclab-shot-tracker-v1";
+const MAX_UNDO = 40;
 
-  const dateInput = document.getElementById("dateInput");
-  const prevDayBtn = document.getElementById("prevDayBtn");
-  const nextDayBtn = document.getElementById("nextDayBtn");
-  const deleteDayBtn = document.getElementById("deleteDayBtn");
-  const exportBtn = document.getElementById("exportBtn");
-  const undoBtn = document.getElementById("undoBtn");
-  const statusBtn = document.getElementById("statusBtn");
-  const statusBox = document.getElementById("statusBox");
-  const sessionSelect = document.getElementById("sessionSelect");
-  const newSessionBtn = document.getElementById("newSessionBtn");
-  const renameSessionBtn = document.getElementById("renameSessionBtn");
-  const deleteSessionBtn = document.getElementById("deleteSessionBtn");
-  const saveNoteBtn = document.getElementById("saveNoteBtn");
-  const hitBtn = document.getElementById("hitBtn");
-  const missBtn = document.getElementById("missBtn");
-  const selectedZoneInfo = document.getElementById("selectedZoneInfo");
-  const sessionStats = document.getElementById("sessionStats");
-  const dayStats = document.getElementById("dayStats");
-  const allStats = document.getElementById("allStats");
-  const zoneStats = document.getElementById("zoneStats");
-  const dayList = document.getElementById("dayList");
-  const interactiveSvg = document.getElementById("interactiveSvg");
-  const sessionSvg = document.getElementById("sessionSvg");
-  const allSvg = document.getElementById("allSvg");
-  const currentDateLabel = document.getElementById("currentDateLabel");
-  const currentSessionLabel = document.getElementById("currentSessionLabel");
-  const courtImage = document.getElementById("courtImage");
-  const dayNote = document.getElementById("dayNote");
+const zones = [
+  {
+    id: "left-corner-3",
+    name: "Left Corner 3",
+    type: "3PT",
+    d: "M0 0 H111 V268 H0 Z",
+    label: [57, 134],
+  },
+  {
+    id: "left-wing-3",
+    name: "Left Wing 3",
+    type: "3PT",
+    d: "M0 268 H111 C143 333 191 379 250 402 L250 507 H0 Z",
+    label: [116, 397],
+  },
+  {
+    id: "top-3",
+    name: "Top 3",
+    type: "3PT",
+    d: "M250 402 C328 433 420 433 499 402 V507 H250 Z",
+    label: [374, 456],
+  },
+  {
+    id: "right-wing-3",
+    name: "Right Wing 3",
+    type: "3PT",
+    d: "M635 268 H746 V507 H499 V402 C558 379 603 333 635 268 Z",
+    label: [631, 397],
+  },
+  {
+    id: "right-corner-3",
+    name: "Right Corner 3",
+    type: "3PT",
+    d: "M635 0 H746 V268 H635 Z",
+    label: [690, 134],
+  },
+  {
+    id: "left-mid-upper",
+    name: "Left Mid Upper",
+    type: "Midrange",
+    d: "M111 0 H249 V156 H111 Z",
+    label: [180, 79],
+  },
+  {
+    id: "left-mid-lower",
+    name: "Left Mid Lower",
+    type: "Midrange",
+    d: "M111 156 H249 V389 C187 365 140 322 111 268 Z",
+    label: [181, 258],
+  },
+  {
+    id: "free-throw-area",
+    name: "Free Throw Area",
+    type: "Midrange",
+    d: "M249 319 H499 V402 C420 433 328 433 249 402 Z",
+    label: [374, 374],
+  },
+  {
+    id: "right-mid-lower",
+    name: "Right Mid Lower",
+    type: "Midrange",
+    d: "M499 156 H635 V268 C606 322 560 365 499 389 Z",
+    label: [568, 258],
+  },
+  {
+    id: "right-mid-upper",
+    name: "Right Mid Upper",
+    type: "Midrange",
+    d: "M499 0 H635 V156 H499 Z",
+    label: [568, 79],
+  },
+  {
+    id: "paint-upper-left",
+    name: "Paint Upper Left",
+    type: "Paint",
+    d: "M249 0 H374 V156 H249 Z",
+    label: [312, 78],
+  },
+  {
+    id: "paint-upper-right",
+    name: "Paint Upper Right",
+    type: "Paint",
+    d: "M374 0 H499 V156 H374 Z",
+    label: [437, 78],
+  },
+  {
+    id: "paint-lower-left",
+    name: "Paint Lower Left",
+    type: "Paint",
+    d: "M249 156 H374 V319 H249 Z",
+    label: [312, 239],
+  },
+  {
+    id: "paint-lower-right",
+    name: "Paint Lower Right",
+    type: "Paint",
+    d: "M374 156 H499 V319 H374 Z",
+    label: [437, 239],
+  },
+];
 
-  let db = loadDB();
-  let selectedDate = todayISO();
-  let selectedSessionId = null;
-  let selectedZone = null;
-  let historyState = null;
-  let courtImageLoaded = false;
+const els = {
+  datePicker: document.getElementById("datePicker"),
+  prevDayBtn: document.getElementById("prevDayBtn"),
+  nextDayBtn: document.getElementById("nextDayBtn"),
+  deleteDayBtn: document.getElementById("deleteDayBtn"),
+  dateSummary: document.getElementById("dateSummary"),
+  sessionSelect: document.getElementById("sessionSelect"),
+  newSessionBtn: document.getElementById("newSessionBtn"),
+  renameSessionBtn: document.getElementById("renameSessionBtn"),
+  deleteSessionBtn: document.getElementById("deleteSessionBtn"),
+  sessionStat: document.getElementById("sessionStat"),
+  sessionPct: document.getElementById("sessionPct"),
+  dayStat: document.getElementById("dayStat"),
+  dayPct: document.getElementById("dayPct"),
+  allTimeStat: document.getElementById("allTimeStat"),
+  allTimePct: document.getElementById("allTimePct"),
+  selectedZoneName: document.getElementById("selectedZoneName"),
+  selectedZoneStat: document.getElementById("selectedZoneStat"),
+  statusBtn: document.getElementById("statusBtn"),
+  statusDetails: document.getElementById("statusDetails"),
+  dayCountBadge: document.getElementById("dayCountBadge"),
+  pastDaysList: document.getElementById("pastDaysList"),
+  exportBtn: document.getElementById("exportBtn"),
+  undoBtn: document.getElementById("undoBtn"),
+  courtTitle: document.getElementById("courtTitle"),
+  courtImage: document.getElementById("courtImage"),
+  courtSvg: document.getElementById("courtSvg"),
+  makeBtn: document.getElementById("makeBtn"),
+  missBtn: document.getElementById("missBtn"),
+  sessionHeatmap: document.getElementById("sessionHeatmap"),
+  allTimeHeatmap: document.getElementById("allTimeHeatmap"),
+  sessionHeatmapMeta: document.getElementById("sessionHeatmapMeta"),
+  allTimeHeatmapMeta: document.getElementById("allTimeHeatmapMeta"),
+  sessionChart: document.getElementById("sessionChart"),
+  dailyChart: document.getElementById("dailyChart"),
+};
 
-  courtImage.addEventListener("load", () => {
-    courtImageLoaded = true;
+let state = loadState();
+let selectedDate = state.settings.selectedDate || localDateKey();
+let selectedSessionId = state.settings.selectedSessionId || null;
+let selectedZoneId = null;
+let courtImageLoaded = false;
+let sessionChart;
+let dailyChart;
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateFromKey(key) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateLabel(key) {
+  return dateFromKey(key).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function uid(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function loadState() {
+  const fallback = { version: 1, days: {}, undo: [], settings: {} };
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!parsed || typeof parsed !== "object") return fallback;
+    return {
+      version: 1,
+      days: parsed.days || {},
+      undo: Array.isArray(parsed.undo) ? parsed.undo.slice(-MAX_UNDO) : [],
+      settings: parsed.settings || {},
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveState() {
+  state.settings.selectedDate = selectedDate;
+  state.settings.selectedSessionId = selectedSessionId;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function snapshot(action) {
+  state.undo.push({
+    action,
+    at: new Date().toISOString(),
+    state: JSON.stringify({ days: state.days, settings: state.settings }),
+  });
+  state.undo = state.undo.slice(-MAX_UNDO);
+}
+
+function ensureDay(dateKey = selectedDate) {
+  if (!state.days[dateKey]) {
+    state.days[dateKey] = {
+      date: dateKey,
+      notes: "",
+      sessions: {},
+      sessionOrder: [],
+      createdAt: Date.now(),
+    };
+  }
+  const day = state.days[dateKey];
+  if (!day.sessionOrder.length) {
+    const session = createSessionObject("Main Session");
+    day.sessions[session.id] = session;
+    day.sessionOrder.push(session.id);
+  }
+  return day;
+}
+
+function createSessionObject(name) {
+  return {
+    id: uid("session"),
+    name,
+    shots: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+function currentDay() {
+  return ensureDay(selectedDate);
+}
+
+function currentSession() {
+  const day = currentDay();
+  if (!selectedSessionId || !day.sessions[selectedSessionId]) {
+    selectedSessionId = day.sessionOrder[0];
+  }
+  return day.sessions[selectedSessionId];
+}
+
+function allShots() {
+  return Object.values(state.days).flatMap((day) =>
+    day.sessionOrder.flatMap((sessionId) => {
+      const session = day.sessions[sessionId];
+      return session ? session.shots : [];
+    }),
+  );
+}
+
+function dayShots(dateKey = selectedDate) {
+  const day = ensureDay(dateKey);
+  return day.sessionOrder.flatMap((sessionId) => day.sessions[sessionId]?.shots || []);
+}
+
+function statsFor(shots, zoneId = null) {
+  const filtered = zoneId ? shots.filter((shot) => shot.zoneId === zoneId) : shots;
+  const attempts = filtered.length;
+  const made = filtered.filter((shot) => shot.made).length;
+  return { made, attempts, pct: attempts ? Math.round((made / attempts) * 100) : 0 };
+}
+
+function colorFor(stat) {
+  if (!stat.attempts) return "rgba(215, 220, 229, 0.72)";
+  if (stat.pct < 34) return "rgba(255, 92, 108, 0.76)";
+  if (stat.pct < 43) return "rgba(255, 179, 71, 0.78)";
+  return "rgba(41, 209, 125, 0.78)";
+}
+
+function renderCourt() {
+  els.courtSvg.innerHTML = "";
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  defs.innerHTML = `
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  `;
+  els.courtSvg.appendChild(defs);
+
+  zones.forEach((zone) => {
+    const stat = statsFor(currentSession().shots, zone.id);
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("data-zone-id", zone.id);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", zone.d);
+    path.setAttribute("fill", colorFor(stat));
+    path.setAttribute("class", `zone-path${selectedZoneId === zone.id ? " selected" : ""}`);
+    path.setAttribute("filter", "url(#softShadow)");
+    path.addEventListener("click", () => selectZone(zone.id));
+    group.appendChild(path);
+
+    const mainText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    mainText.setAttribute("x", zone.label[0]);
+    mainText.setAttribute("y", zone.label[1] - 8);
+    mainText.setAttribute("class", "zone-label");
+    mainText.textContent = stat.attempts ? `${stat.pct}%` : "0%";
+    group.appendChild(mainText);
+
+    const subText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    subText.setAttribute("x", zone.label[0]);
+    subText.setAttribute("y", zone.label[1] + 10);
+    subText.setAttribute("class", "zone-label zone-sub-label");
+    subText.textContent = `${stat.made}/${stat.attempts}`;
+    group.appendChild(subText);
+
+    els.courtSvg.appendChild(group);
+  });
+}
+
+function selectZone(zoneId) {
+  selectedZoneId = zoneId;
+  const zone = zones.find((item) => item.id === zoneId);
+  els.courtTitle.textContent = zone.name;
+  els.makeBtn.disabled = false;
+  els.missBtn.disabled = false;
+  renderAll();
+}
+
+function recordShot(made) {
+  if (!selectedZoneId) return;
+  snapshot(made ? "Made shot" : "Missed shot");
+  const shot = {
+    id: uid("shot"),
+    date: selectedDate,
+    sessionId: selectedSessionId,
+    zoneId: selectedZoneId,
+    made,
+    timestamp: Date.now(),
+  };
+  const session = currentSession();
+  session.shots.push(shot);
+  session.updatedAt = Date.now();
+  saveState();
+  renderAll();
+}
+
+function renderSessions() {
+  const day = currentDay();
+  els.sessionSelect.innerHTML = "";
+  day.sessionOrder.forEach((sessionId) => {
+    const session = day.sessions[sessionId];
+    if (!session) return;
+    const option = document.createElement("option");
+    option.value = session.id;
+    option.textContent = `${session.name} (${session.shots.length})`;
+    els.sessionSelect.appendChild(option);
+  });
+  els.sessionSelect.value = currentSession().id;
+}
+
+function renderStats() {
+  const sessionStats = statsFor(currentSession().shots);
+  const todayStats = statsFor(dayShots());
+  const lifetimeStats = statsFor(allShots());
+  const zone = zones.find((item) => item.id === selectedZoneId);
+  const selectedStats = selectedZoneId ? statsFor(allShots(), selectedZoneId) : null;
+
+  els.sessionStat.textContent = `${sessionStats.made}/${sessionStats.attempts}`;
+  els.sessionPct.textContent = `${sessionStats.pct}% FG`;
+  els.dayStat.textContent = `${todayStats.made}/${todayStats.attempts}`;
+  els.dayPct.textContent = `${todayStats.pct}% FG`;
+  els.allTimeStat.textContent = `${lifetimeStats.made}/${lifetimeStats.attempts}`;
+  els.allTimePct.textContent = `${lifetimeStats.pct}% FG`;
+  els.selectedZoneName.textContent = zone ? zone.name : "None";
+  els.selectedZoneStat.textContent = selectedStats
+    ? `${selectedStats.made}/${selectedStats.attempts} • ${selectedStats.pct}% all time`
+    : "Pick a zone";
+}
+
+function renderDate() {
+  const shots = dayShots();
+  const sessions = currentDay().sessionOrder.length;
+  els.datePicker.value = selectedDate;
+  els.dateSummary.textContent = `${formatDateLabel(selectedDate)} • ${sessions} session${sessions === 1 ? "" : "s"} • ${shots.length} shot${shots.length === 1 ? "" : "s"}`;
+}
+
+function renderPastDays() {
+  const dayKeys = Object.keys(state.days).sort((a, b) => b.localeCompare(a));
+  els.dayCountBadge.textContent = String(dayKeys.length);
+  els.pastDaysList.innerHTML = "";
+
+  dayKeys.forEach((dateKey) => {
+    const shots = dayShots(dateKey);
+    const stat = statsFor(shots);
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = `day-pill${dateKey === selectedDate ? " active" : ""}`;
+    item.innerHTML = `<span>${formatDateLabel(dateKey)}<small>${stat.made}/${stat.attempts} • ${stat.pct}%</small></span><strong>${state.days[dateKey].sessionOrder.length}</strong>`;
+    item.addEventListener("click", () => {
+      selectedDate = dateKey;
+      selectedSessionId = state.days[dateKey].sessionOrder[0];
+      selectedZoneId = null;
+      saveState();
+      renderAll();
+    });
+    els.pastDaysList.appendChild(item);
+  });
+}
+
+function renderHeatmap(container, shots) {
+  container.innerHTML = "";
+  zones.forEach((zone) => {
+    const stat = statsFor(shots, zone.id);
+    const tile = document.createElement("div");
+    tile.className = "heat-tile";
+    tile.style.background = colorFor(stat);
+    tile.innerHTML = `<strong>${zone.name}</strong><span>${stat.pct}%</span><small>${stat.made}/${stat.attempts}</small>`;
+    tile.addEventListener("click", () => selectZone(zone.id));
+    container.appendChild(tile);
+  });
+}
+
+function renderHeatmaps() {
+  const sessionShots = currentSession().shots;
+  const lifetimeShots = allShots();
+  els.sessionHeatmapMeta.textContent = `${sessionShots.length} shot${sessionShots.length === 1 ? "" : "s"}`;
+  els.allTimeHeatmapMeta.textContent = `${lifetimeShots.length} shot${lifetimeShots.length === 1 ? "" : "s"}`;
+  renderHeatmap(els.sessionHeatmap, sessionShots);
+  renderHeatmap(els.allTimeHeatmap, lifetimeShots);
+}
+
+function chartDefaults() {
+  Chart.defaults.color = "#9ca7b6";
+  Chart.defaults.borderColor = "rgba(255,255,255,0.1)";
+  Chart.defaults.font.family =
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+}
+
+function renderCharts() {
+  const shots = currentSession().shots;
+  const labels = shots.map((_, index) => String(index + 1));
+  let makes = 0;
+  const progression = shots.map((shot, index) => {
+    if (shot.made) makes += 1;
+    return Math.round((makes / (index + 1)) * 100);
+  });
+  const dayKeys = Object.keys(state.days).sort();
+  const dayLabels = dayKeys.map((key) => key.slice(5));
+  const dayPercents = dayKeys.map((key) => statsFor(dayShots(key)).pct);
+
+  if (!window.Chart) {
+    drawLineChart(els.sessionChart, labels, progression, "FG%");
+    drawBarChart(els.dailyChart, dayLabels, dayPercents, dayKeys);
+    return;
+  }
+
+  chartDefaults();
+
+  if (sessionChart) sessionChart.destroy();
+  sessionChart = new Chart(els.sessionChart, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "FG%",
+          data: progression,
+          borderColor: "#f7c948",
+          backgroundColor: "rgba(247, 201, 72, 0.14)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%` } } },
+      plugins: { legend: { display: false } },
+    },
   });
 
-  courtImage.addEventListener("error", () => {
-    courtImageLoaded = false;
+  if (dailyChart) dailyChart.destroy();
+  dailyChart = new Chart(els.dailyChart, {
+    type: "bar",
+    data: {
+      labels: dayLabels,
+      datasets: [
+        {
+          label: "Daily FG%",
+          data: dayPercents,
+          backgroundColor: dayKeys.map((key) =>
+            key === selectedDate ? "rgba(247, 201, 72, 0.9)" : "rgba(41, 209, 125, 0.65)",
+          ),
+          borderRadius: 7,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%` } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+function prepareCanvas(canvas) {
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+  canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  return { ctx, width: rect.width, height: rect.height };
+}
+
+function drawChartFrame(ctx, width, height) {
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(255,255,255,0.02)";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "rgba(255,255,255,0.1)";
+  ctx.lineWidth = 1;
+  ctx.font = "12px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "#9ca7b6";
+  for (let i = 0; i <= 4; i += 1) {
+    const y = 20 + ((height - 48) * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(38, y);
+    ctx.lineTo(width - 14, y);
+    ctx.stroke();
+    ctx.fillText(`${100 - i * 25}%`, 4, y + 4);
+  }
+}
+
+function drawLineChart(canvas, labels, values) {
+  const { ctx, width, height } = prepareCanvas(canvas);
+  drawChartFrame(ctx, width, height);
+  if (!values.length) {
+    ctx.fillStyle = "#9ca7b6";
+    ctx.fillText("No shots yet", 42, height / 2);
+    return;
+  }
+  const left = 42;
+  const right = width - 18;
+  const top = 20;
+  const bottom = height - 28;
+  const points = values.map((value, index) => {
+    const x = values.length === 1 ? left : left + ((right - left) * index) / (values.length - 1);
+    const y = bottom - ((bottom - top) * value) / 100;
+    return [x, y];
   });
 
-  const ZONES = [
-    { id: 0, name: "Corner Left", short: "CL", points: [[0, 0], [145, 0], [145, 470], [0, 470]], labelX: 72, labelY: 205 },
-    { id: 1, name: "Wing Left", short: "WL", points: [[145, 0], [355, 0], [330, 470], [145, 470]], labelX: 245, labelY: 190 },
-    { id: 2, name: "Top", short: "TOP", points: [[355, 0], [645, 0], [670, 470], [330, 470]], labelX: 500, labelY: 175 },
-    { id: 3, name: "Wing Right", short: "WR", points: [[645, 0], [855, 0], [855, 470], [670, 470]], labelX: 755, labelY: 190 },
-    { id: 4, name: "Corner Right", short: "CR", points: [[855, 0], [1000, 0], [1000, 470], [855, 470]], labelX: 928, labelY: 205 },
-    { id: 5, name: "Mid Left Upper", short: "MLU", points: [[145, 470], [330, 470], [330, 560], [145, 560]], labelX: 238, labelY: 510 },
-    { id: 6, name: "Mid Left Lower", short: "MLL", points: [[145, 560], [330, 560], [330, 680], [145, 680]], labelX: 238, labelY: 620 },
-    { id: 7, name: "Free Throw", short: "FT", points: [[330, 470], [670, 470], [670, 600], [330, 600]], labelX: 500, labelY: 540 },
-    { id: 8, name: "Mid Right Lower", short: "MRL", points: [[670, 560], [855, 560], [855, 680], [670, 680]], labelX: 762, labelY: 620 },
-    { id: 9, name: "Mid Right Upper", short: "MRU", points: [[670, 470], [855, 470], [855, 560], [670, 560]], labelX: 762, labelY: 510 },
-    { id: 10, name: "Paint UL", short: "PUL", points: [[330, 600], [500, 600], [500, 640], [330, 640]], labelX: 415, labelY: 620 },
-    { id: 11, name: "Paint UR", short: "PUR", points: [[500, 600], [670, 600], [670, 640], [500, 640]], labelX: 585, labelY: 620 },
-    { id: 12, name: "Paint LL", short: "PLL", points: [[330, 640], [500, 640], [500, 680], [330, 680]], labelX: 415, labelY: 660 },
-    { id: 13, name: "Paint LR", short: "PLR", points: [[500, 640], [670, 640], [670, 680], [500, 680]], labelX: 585, labelY: 660 }
+  ctx.beginPath();
+  points.forEach(([x, y], index) => {
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = "#f7c948";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.lineTo(points[points.length - 1][0], bottom);
+  ctx.lineTo(points[0][0], bottom);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(247, 201, 72, 0.14)";
+  ctx.fill();
+
+  ctx.fillStyle = "#f7c948";
+  points.forEach(([x, y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "#9ca7b6";
+  ctx.fillText(`Shots: ${labels.length}`, left, height - 7);
+}
+
+function drawBarChart(canvas, labels, values, dayKeys) {
+  const { ctx, width, height } = prepareCanvas(canvas);
+  drawChartFrame(ctx, width, height);
+  if (!values.length) {
+    ctx.fillStyle = "#9ca7b6";
+    ctx.fillText("No days yet", 42, height / 2);
+    return;
+  }
+  const left = 42;
+  const right = width - 18;
+  const top = 20;
+  const bottom = height - 28;
+  const gap = 8;
+  const barWidth = Math.max(8, (right - left - gap * (values.length - 1)) / values.length);
+
+  values.forEach((value, index) => {
+    const x = left + index * (barWidth + gap);
+    const barHeight = ((bottom - top) * value) / 100;
+    ctx.fillStyle = dayKeys[index] === selectedDate ? "#f7c948" : "rgba(41, 209, 125, 0.75)";
+    roundedRect(ctx, x, bottom - barHeight, barWidth, barHeight, 7);
+    ctx.fill();
+    if (barWidth > 24) {
+      ctx.fillStyle = "#9ca7b6";
+      ctx.fillText(labels[index], x, height - 7);
+    }
+  });
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + safeRadius, y);
+  ctx.lineTo(x + width - safeRadius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  ctx.lineTo(x + width, y + height);
+  ctx.lineTo(x, y + height);
+  ctx.lineTo(x, y + safeRadius);
+  ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  ctx.closePath();
+}
+
+function renderStatus() {
+  const totalShots = allShots().length;
+  const storageSize = new Blob([localStorage.getItem(STORAGE_KEY) || ""]).size;
+  const rows = [
+    ["court.png loaded", courtImageLoaded],
+    ["SVG loaded", Boolean(els.courtSvg)],
+    ["14 zones exist", zones.length === 14 && els.courtSvg.querySelectorAll(".zone-path").length === 14],
+    ["selected zone", selectedZoneId ? zones.find((zone) => zone.id === selectedZoneId).name : "None"],
+    ["total stored shots", totalShots],
+    ["total days", Object.keys(state.days).length],
+    ["localStorage size", `${(storageSize / 1024).toFixed(1)} KB`],
+    ["current session", currentSession().name],
+    ["current date", selectedDate],
   ];
 
-  init();
+  els.statusDetails.innerHTML = rows
+    .map(([label, value]) => {
+      const ok = typeof value === "boolean" ? value : value !== "None" && value !== 0;
+      const text = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
+      return `<div class="status-row"><span><i class="status-dot ${ok ? "good" : ""}"></i> ${label}</span><strong>${text}</strong></div>`;
+    })
+    .join("");
+}
 
-  function init() {
-    ensureDay(selectedDate);
-    if (!currentDay().sessions.length) createSession("Session 1");
-    selectedSessionId = currentDay().sessions[0].id;
-    dateInput.value = selectedDate;
+function renderAll() {
+  currentDay();
+  currentSession();
+  renderSessions();
+  renderDate();
+  renderCourt();
+  renderStats();
+  renderHeatmaps();
+  renderPastDays();
+  renderCharts();
+  renderStatus();
+  els.undoBtn.disabled = state.undo.length === 0;
+  saveState();
+}
+
+function changeDate(offset) {
+  const date = dateFromKey(selectedDate);
+  date.setDate(date.getDate() + offset);
+  selectedDate = localDateKey(date);
+  selectedSessionId = null;
+  selectedZoneId = null;
+  renderAll();
+}
+
+function createSession() {
+  const name = prompt("Session name", `Session ${currentDay().sessionOrder.length + 1}`);
+  if (!name || !name.trim()) return;
+  snapshot("Create session");
+  const session = createSessionObject(name.trim());
+  const day = currentDay();
+  day.sessions[session.id] = session;
+  day.sessionOrder.push(session.id);
+  selectedSessionId = session.id;
+  saveState();
+  renderAll();
+}
+
+function renameSession() {
+  const session = currentSession();
+  const name = prompt("Rename session", session.name);
+  if (!name || !name.trim() || name.trim() === session.name) return;
+  snapshot("Rename session");
+  session.name = name.trim();
+  session.updatedAt = Date.now();
+  saveState();
+  renderAll();
+}
+
+function deleteSession() {
+  const day = currentDay();
+  if (day.sessionOrder.length <= 1) {
+    alert("A day must keep at least one session.");
+    return;
+  }
+  const session = currentSession();
+  if (!confirm(`Delete "${session.name}" and ${session.shots.length} shots?`)) return;
+  snapshot("Delete session");
+  delete day.sessions[session.id];
+  day.sessionOrder = day.sessionOrder.filter((id) => id !== session.id);
+  selectedSessionId = day.sessionOrder[0];
+  selectedZoneId = null;
+  saveState();
+  renderAll();
+}
+
+function deleteDay() {
+  const day = currentDay();
+  const shots = dayShots().length;
+  if (!confirm(`Delete ${formatDateLabel(selectedDate)} and ${shots} shots?`)) return;
+  snapshot("Delete day");
+  delete state.days[selectedDate];
+  const remaining = Object.keys(state.days).sort();
+  selectedDate = remaining[remaining.length - 1] || localDateKey();
+  selectedSessionId = null;
+  selectedZoneId = null;
+  saveState();
+  renderAll();
+}
+
+function undoLast() {
+  const entry = state.undo.pop();
+  if (!entry) return;
+  const restored = JSON.parse(entry.state);
+  state.days = restored.days || {};
+  state.settings = restored.settings || {};
+  selectedDate = state.settings.selectedDate || localDateKey();
+  selectedSessionId = state.settings.selectedSessionId || null;
+  selectedZoneId = null;
+  saveState();
+  renderAll();
+}
+
+function exportCsv() {
+  const header = ["date", "session", "zone", "zone_type", "made", "timestamp"];
+  const rows = allShots().map((shot) => {
+    const day = state.days[shot.date];
+    const session = day?.sessions?.[shot.sessionId];
+    const zone = zones.find((item) => item.id === shot.zoneId);
+    return [
+      shot.date,
+      session?.name || "",
+      zone?.name || shot.zoneId,
+      zone?.type || "",
+      shot.made ? "make" : "miss",
+      new Date(shot.timestamp).toLocaleString(),
+    ];
+  });
+  const csv = [header, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `arclab-shots-${localDateKey()}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function bindEvents() {
+  els.prevDayBtn.addEventListener("click", () => changeDate(-1));
+  els.nextDayBtn.addEventListener("click", () => changeDate(1));
+  els.datePicker.addEventListener("change", (event) => {
+    selectedDate = event.target.value || localDateKey();
+    selectedSessionId = null;
+    selectedZoneId = null;
     renderAll();
-  }
-
-  function loadDB() {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("tracker_v_final");
-    if (!raw) return { notes: {}, days: {} };
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        if (!parsed.days) {
-          const legacyDays = {};
-          Object.entries(parsed).forEach(([key, value]) => {
-            if (key !== "notes") {
-              legacyDays[key] = value;
-            }
-          });
-          return { notes: parsed.notes || {}, days: legacyDays };
-        }
-        return parsed;
-      }
-    } catch {
-      return { notes: {}, days: {} };
-    }
-    return { notes: {}, days: {} };
-  }
-
-  function saveDB() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  }
-
-  function todayISO() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  function shiftISO(dateISO, days) {
-    const date = new Date(dateISO);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().slice(0, 10);
-  }
-
-  function ensureDay(date) {
-    if (!db.days) db.days = {};
-    if (!db.days[date]) db.days[date] = { sessions: [] };
-  }
-
-  function currentDay() {
-    ensureDay(selectedDate);
-    return db.days[selectedDate];
-  }
-
-  function currentSession() {
-    const session = currentDay().sessions.find((item) => item.id === selectedSessionId);
-    return session || currentDay().sessions[0];
-  }
-
-  function createSession(name) {
-    const session = { id: crypto.randomUUID(), name, shots: [] };
-    currentDay().sessions.push(session);
-    saveDB();
-    return session;
-  }
-
-  function clone(value) {
-    return JSON.parse(JSON.stringify(value));
-  }
-
-  function pushHistory() {
-    historyState = { db: clone(db), selectedDate, selectedSessionId, selectedZone };
-  }
-
-  function undo() {
-    if (!historyState) {
-      alert("Keine Aktion zum Rückgängigmachen vorhanden.");
+  });
+  els.deleteDayBtn.addEventListener("click", deleteDay);
+  els.newSessionBtn.addEventListener("click", createSession);
+  els.renameSessionBtn.addEventListener("click", renameSession);
+  els.deleteSessionBtn.addEventListener("click", deleteSession);
+  els.sessionSelect.addEventListener("change", (event) => {
+    selectedSessionId = event.target.value;
+    selectedZoneId = null;
+    renderAll();
+  });
+  els.makeBtn.addEventListener("click", () => recordShot(true));
+  els.missBtn.addEventListener("click", () => recordShot(false));
+  els.undoBtn.addEventListener("click", undoLast);
+  els.exportBtn.addEventListener("click", exportCsv);
+  els.statusBtn.addEventListener("click", () => {
+    els.statusDetails.classList.toggle("collapsed");
+    renderStatus();
+  });
+  els.courtImage.addEventListener("load", () => {
+    courtImageLoaded = true;
+    renderStatus();
+  });
+  els.courtImage.addEventListener("error", () => {
+    const fallbacks = ["/Wurf/court.png", "/Users/elija/Wurf/court.png"];
+    const fallbackIndex = Number(els.courtImage.dataset.fallbackIndex || "0");
+    if (fallbackIndex < fallbacks.length) {
+      els.courtImage.dataset.fallbackIndex = String(fallbackIndex + 1);
+      els.courtImage.src = fallbacks[fallbackIndex];
       return;
     }
-    db = clone(historyState.db);
-    selectedDate = historyState.selectedDate;
-    selectedSessionId = historyState.selectedSessionId;
-    selectedZone = historyState.selectedZone;
-    historyState = null;
-    renderAll();
-  }
-
-  function summarizeShots(shots) {
-    const summary = { made: 0, attempts: 0, zones: Array(ZONES.length).fill().map(() => ({ made: 0, attempts: 0 })) };
-    shots.forEach((shot) => {
-      summary.attempts += 1;
-      if (shot.made) summary.made += 1;
-      if (typeof summary.zones[shot.zone] !== "undefined") {
-        summary.zones[shot.zone].attempts += 1;
-        if (shot.made) summary.zones[shot.zone].made += 1;
-      }
-    });
-    return summary;
-  }
-
-  function getZoneStats(shots, zoneId) {
-    const filtered = shots.filter((shot) => shot.zone === zoneId);
-    const made = filtered.filter((shot) => shot.made).length;
-    const attempts = filtered.length;
-    return { made, attempts, pct: attempts ? Math.round((made / attempts) * 100) : 0 };
-  }
-
-  function zoneColor(pct) {
-    if (pct >= 70) return { fill: "#16a34a", stroke: "#14532d" };
-    if (pct >= 45) return { fill: "#f59e0b", stroke: "#78350f" };
-    return { fill: "#dc2626", stroke: "#7f1d1d" };
-  }
-
-  function createSvgEl(tag, attrs) {
-    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
-    return el;
-  }
-
-  function pointInPolygon(x, y, points) {
-    let inside = false;
-    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-      const xi = points[i][0];
-      const yi = points[i][1];
-      const xj = points[j][0];
-      const yj = points[j][1];
-      const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1e-9) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  }
-
-  function findZoneByPoint(nx, ny) {
-    const x = nx * 1000;
-    const y = ny * 680;
-    for (const zone of ZONES) {
-      if (pointInPolygon(x, y, zone.points)) return zone.id;
-    }
-    let closest = null;
-    let bestDist = Infinity;
-    ZONES.forEach((zone) => {
-      const dx = x - zone.labelX;
-      const dy = y - zone.labelY;
-      const dist = dx * dx + dy * dy;
-      if (dist < bestDist) {
-        bestDist = dist;
-        closest = zone.id;
-      }
-    });
-    return closest;
-  }
-
-  function polygonPointsString(points) {
-    return points.map(([x, y]) => `${x},${y}`).join(" ");
-  }
-
-  function renderSvg(svg, shots, interactive = false) {
-    svg.innerHTML = "";
-    const defs = createSvgEl("defs", {});
-    const filter = createSvgEl("filter", { id: "heat-blur" });
-    const blur = createSvgEl("feGaussianBlur", { in: "SourceGraphic", stdDeviation: "15" });
-    filter.appendChild(blur);
-    defs.appendChild(filter);
-    svg.appendChild(defs);
-
-    if (shots.length) {
-      const heat = createSvgEl("g", { class: "heat-group", filter: "url(#heat-blur)" });
-      shots.forEach((shot) => {
-        const zone = ZONES[shot.zone];
-        if (!zone) return;
-        const jitter = () => (Math.random() - 0.5) * 36;
-        const circle = createSvgEl("circle", {
-          cx: zone.labelX + jitter(),
-          cy: zone.labelY + jitter(),
-          r: 28,
-          fill: shot.made ? "#22c55e" : "#f97316",
-          opacity: "0.12"
-        });
-        heat.appendChild(circle);
-      });
-      svg.appendChild(heat);
-    }
-
-    ZONES.forEach((zone) => {
-      const stats = getZoneStats(shots, zone.id);
-      const colors = zoneColor(stats.pct);
-      const polygon = createSvgEl("polygon", {
-        points: polygonPointsString(zone.points),
-        fill: colors.fill,
-        stroke: colors.stroke,
-        "stroke-width": selectedZone === zone.id && interactive ? "5" : "2",
-        opacity: "0.78",
-        class: `zone ${selectedZone === zone.id && interactive ? "selected-zone" : ""}`
-      });
-      if (interactive) {
-        polygon.style.cursor = "pointer";
-      }
-      svg.appendChild(polygon);
-      const label = createSvgEl("text", {
-        x: zone.labelX,
-        y: zone.labelY - 10,
-        "text-anchor": "middle",
-        class: "zone-label"
-      });
-      label.textContent = zone.short;
-      svg.appendChild(label);
-      const pct = createSvgEl("text", {
-        x: zone.labelX,
-        y: zone.labelY + 22,
-        "text-anchor": "middle",
-        class: "zone-percent"
-      });
-      pct.textContent = `${stats.pct}%`;
-      svg.appendChild(pct);
-    });
-
-    if (interactive) {
-      svg.onclick = (event) => {
-        const pt = svg.createSVGPoint();
-        pt.x = event.clientX;
-        pt.y = event.clientY;
-        const ctm = svg.getScreenCTM();
-        if (!ctm) return;
-        const cursorPt = pt.matrixTransform(ctm.inverse());
-        const zoneId = findZoneByPoint(cursorPt.x / 1000, cursorPt.y / 680);
-        if (zoneId !== null) {
-          selectedZone = zoneId;
-          renderAll();
-        }
-      };
-    } else {
-      svg.onclick = null;
-    }
-  }
-
-  function renderStats() {
-    const session = currentSession();
-    const sessionSummary = summarizeShots(session?.shots || []);
-    const daySummary = summarizeShots(currentDay().sessions.flatMap((item) => item.shots));
-    const allSummary = summarizeShots(getAllShots());
-
-    sessionStats.textContent = `Session: ${sessionSummary.made}/${sessionSummary.attempts} (${sessionSummary.attempts ? Math.round((sessionSummary.made / sessionSummary.attempts) * 100) : 0}%)`;
-    dayStats.textContent = `Tag: ${daySummary.made}/${daySummary.attempts} (${daySummary.attempts ? Math.round((daySummary.made / daySummary.attempts) * 100) : 0}%)`;
-    allStats.textContent = `All Time: ${allSummary.made}/${allSummary.attempts} (${allSummary.attempts ? Math.round((allSummary.made / allSummary.attempts) * 100) : 0}%)`;
-
-    if (selectedZone !== null) {
-      const zone = ZONES[selectedZone];
-      const stats = getZoneStats(getAllShots(), selectedZone);
-      selectedZoneInfo.innerHTML = `<strong>${zone.name}</strong><br>${stats.made}/${stats.attempts}`;
-      zoneStats.textContent = `${stats.made}/${stats.attempts} Treffer`;
-    } else {
-      selectedZoneInfo.textContent = "Klicke auf eine Zone, um sie auszuwählen.";
-      zoneStats.textContent = "";
-    }
-
-    currentDateLabel.textContent = selectedDate;
-    currentSessionLabel.textContent = session?.name || "Keine Session";
-  }
-
-  function renderDayList() {
-    dayList.innerHTML = "";
-    const dates = Object.keys(db.days).sort().reverse();
-    dates.forEach((date) => {
-      const day = db.days[date];
-      const shotCount = day.sessions.flatMap((item) => item.shots).length;
-      const item = document.createElement("div");
-      item.className = `day-item${date === selectedDate ? " active" : ""}`;
-      item.innerHTML = `<strong>${date}</strong><br>${shotCount} Würfe`;
-      item.addEventListener("click", () => {
-        selectedDate = date;
-        ensureDay(selectedDate);
-        selectedSessionId = currentDay().sessions[0]?.id || null;
-        selectedZone = null;
-        renderAll();
-      });
-      dayList.appendChild(item);
-    });
-  }
-
-  function renderStatus() {
-    const imageOk = courtImageLoaded || courtImage.complete;
-    const current = currentSession();
-    const shots = current?.shots.length || 0;
-    statusBox.textContent = `Bild geladen: ${imageOk ? "JA" : "NEIN"}\n` +
-      `Aktueller Tag: ${selectedDate}\n` +
-      `Session: ${current?.name || "-"}\n` +
-      `Aktive Zone: ${selectedZone !== null ? ZONES[selectedZone].name : "keine"}\n` +
-      `Shots in Session: ${shots}\n` +
-      `Tage gespeichert: ${Object.keys(db.days).length}`;
-  }
-
-  function formatShortDate(date) {
-    const [year, month, day] = date.split("-");
-    return `${day}.${month}.`;
-  }
-
-  function renderCharts() {
-    const session = currentSession();
-    const shots = session?.shots || [];
-    const labels = shots.map((_, idx) => `${idx + 1}`);
-    let made = 0;
-    const values = shots.map((shot, idx) => {
-      if (shot.made) made += 1;
-      return Math.round((made / (idx + 1)) * 100);
-    });
-
-    const dates = Object.keys(db.days).sort();
-    const trendLabels = dates.slice(-14).map(formatShortDate);
-    const trendValues = dates.slice(-14).map((date) => {
-      const summary = summarizeShots(db.days[date].sessions.flatMap((item) => item.shots));
-      return summary.attempts ? Math.round((summary.made / summary.attempts) * 100) : 0;
-    });
-
-    if (!window.sessionChart) {
-      window.sessionChart = new Chart(document.getElementById("sessionChart"), {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Session FG%",
-            data: values,
-            borderColor: "#60a5fa",
-            backgroundColor: "rgba(96,165,250,0.22)",
-            tension: 0.35,
-            fill: true,
-            pointRadius: 4,
-            pointBackgroundColor: "#fff"
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y}%` } }
-          },
-          scales: {
-            x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
-            y: { beginAtZero: true, max: 100, ticks: { color: "#94a3b8", callback: (value) => `${value}%` }, grid: { color: "rgba(148,163,184,0.15)" } }
-          }
-        }
-      });
-    } else {
-      window.sessionChart.data.labels = labels;
-      window.sessionChart.data.datasets[0].data = values;
-      window.sessionChart.update();
-    }
-
-    if (!window.dailyChart) {
-      window.dailyChart = new Chart(document.getElementById("dailyChart"), {
-        type: "bar",
-        data: {
-          labels: trendLabels,
-          datasets: [{
-            label: "Tägliche FG%",
-            data: trendValues,
-            backgroundColor: trendValues.map((value) => value >= 70 ? "#22c55e" : value >= 45 ? "#f97316" : "#ef4444"),
-            borderRadius: 12
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
-            y: { beginAtZero: true, max: 100, ticks: { color: "#94a3b8", callback: (value) => `${value}%` }, grid: { color: "rgba(148,163,184,0.15)" } }
-          }
-        }
-      });
-    } else {
-      window.dailyChart.data.labels = trendLabels;
-      window.dailyChart.data.datasets[0].data = trendValues;
-      window.dailyChart.data.datasets[0].backgroundColor = trendValues.map((value) => value >= 70 ? "#22c55e" : value >= 45 ? "#f97316" : "#ef4444");
-      window.dailyChart.update();
-    }
-  }
-
-  function loadNote() {
-    dayNote.value = db.notes?.[selectedDate] || "";
-  }
-
-  function saveNote() {
-    db.notes = db.notes || {};
-    db.notes[selectedDate] = dayNote.value.trim();
-    saveDB();
+    courtImageLoaded = false;
     renderStatus();
-  }
-
-  function exportCsv() {
-    const rows = [["date", "session", "zone", "made", "timestamp"]];
-    Object.entries(db.days).forEach(([date, day]) => {
-      day.sessions.forEach((session) => {
-        session.shots.forEach((shot) => {
-          rows.push([date, session.name, ZONES[shot.zone]?.name || "", shot.made ? "1" : "0", shot.timestamp]);
-        });
-      });
-    });
-    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "3pt-shot-tracker.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function addShot(made) {
-    if (selectedZone === null) {
-      alert("Wähle zuerst eine Zone auf dem Spielfeld aus.");
-      return;
-    }
-    const session = currentSession();
-    if (!session) return;
-    pushHistory();
-    session.shots.push({ date: selectedDate, sessionId: session.id, zone: selectedZone, made, timestamp: new Date().toISOString() });
-    saveDB();
-    renderAll();
-  }
-
-  function renderAll() {
-    ensureDay(selectedDate);
-    renderSessionSelect();
-    renderDayList();
-    renderStats();
-    loadNote();
-    renderStatus();
-    renderSvg(interactiveSvg, currentSession()?.shots || [], true);
-    renderSvg(sessionSvg, currentSession()?.shots || [], false);
-    renderSvg(allSvg, getAllShots(), false);
-    renderCharts();
-    saveDB();
-  }
-
-  dateInput.addEventListener("change", () => {
-    selectedDate = dateInput.value || todayISO();
-    ensureDay(selectedDate);
-    selectedSessionId = currentDay().sessions[0]?.id || null;
-    selectedZone = null;
-    renderAll();
   });
+}
 
-  prevDayBtn.addEventListener("click", () => {
-    selectedDate = shiftISO(selectedDate, -1);
-    ensureDay(selectedDate);
-    selectedSessionId = currentDay().sessions[0]?.id || null;
-    selectedZone = null;
-    renderAll();
-  });
-
-  nextDayBtn.addEventListener("click", () => {
-    selectedDate = shiftISO(selectedDate, 1);
-    ensureDay(selectedDate);
-    selectedSessionId = currentDay().sessions[0]?.id || null;
-    selectedZone = null;
-    renderAll();
-  });
-
-  hitBtn.addEventListener("click", () => addShot(true));
-  missBtn.addEventListener("click", () => addShot(false));
-  undoBtn.addEventListener("click", undo);
-  statusBtn.addEventListener("click", renderStatus);
-  exportBtn.addEventListener("click", exportCsv);
-  saveNoteBtn.addEventListener("click", () => {
-    saveNote();
-    alert("Notiz gespeichert.");
-  });
-
-  sessionSelect.addEventListener("change", () => {
-    selectedSessionId = sessionSelect.value;
-    selectedZone = null;
-    renderAll();
-  });
-
-  newSessionBtn.addEventListener("click", () => {
-    pushHistory();
-    const session = createSession(`Session ${currentDay().sessions.length + 1}`);
-    selectedSessionId = session.id;
-    selectedZone = null;
-    renderAll();
-  });
-
-  renameSessionBtn.addEventListener("click", () => {
-    const session = currentSession();
-    if (!session) return;
-    const name = prompt("Neuer Session-Name:", session.name);
-    if (!name) return;
-    pushHistory();
-    session.name = name.trim();
-    saveDB();
-    renderAll();
-  });
-
-  deleteSessionBtn.addEventListener("click", () => {
-    const session = currentSession();
-    if (!session || !confirm("Diese Session wirklich löschen?")) return;
-    pushHistory();
-    currentDay().sessions = currentDay().sessions.filter((item) => item.id !== session.id);
-    if (!currentDay().sessions.length) {
-      const fallback = createSession("Session 1");
-      selectedSessionId = fallback.id;
-    } else {
-      selectedSessionId = currentDay().sessions[0].id;
-    }
-    selectedZone = null;
-    renderAll();
-  });
-
-  deleteDayBtn.addEventListener("click", () => {
-    if (!confirm("Diesen Tag vollständig löschen?")) return;
-    pushHistory();
-    delete db.days[selectedDate];
-    const remaining = Object.keys(db.days).sort();
-    selectedDate = remaining.length ? remaining[remaining.length - 1] : todayISO();
-    ensureDay(selectedDate);
-    selectedSessionId = currentDay().sessions[0]?.id || null;
-    selectedZone = null;
-    renderAll();
-  });
-});
+bindEvents();
+renderAll();
