@@ -9,7 +9,6 @@ const zones = [
     d: "M0 0 H111 V268 H0 Z",
     label: [57, 134],
   },
-  
   {
     id: "left-wing-3",
     name: "Left Wing 3",
