@@ -112,6 +112,14 @@ const els = {
   newSessionBtn: document.getElementById("newSessionBtn"),
   renameSessionBtn: document.getElementById("renameSessionBtn"),
   deleteSessionBtn: document.getElementById("deleteSessionBtn"),
+  sessionNotes: document.getElementById("sessionNotes"),
+  notesSavedBadge: document.getElementById("notesSavedBadge"),
+  sessionAttemptGoal: document.getElementById("sessionAttemptGoal"),
+  sessionPctGoal: document.getElementById("sessionPctGoal"),
+  zoneAttemptGoal: document.getElementById("zoneAttemptGoal"),
+  zonePctGoal: document.getElementById("zonePctGoal"),
+  goalSummary: document.getElementById("goalSummary"),
+  goalProgress: document.getElementById("goalProgress"),
   sessionStat: document.getElementById("sessionStat"),
   sessionPct: document.getElementById("sessionPct"),
   dayStat: document.getElementById("dayStat"),
@@ -131,13 +139,20 @@ const els = {
   courtSvg: document.getElementById("courtSvg"),
   makeBtn: document.getElementById("makeBtn"),
   missBtn: document.getElementById("missBtn"),
-  sessionHeatmap: document.getElementById("sessionHeatmap"),
-  rangeHeatmap: document.getElementById("rangeHeatmap"),
-  allTimeHeatmap: document.getElementById("allTimeHeatmap"),
-  sessionHeatmapMeta: document.getElementById("sessionHeatmapMeta"),
-  rangeHeatmapMeta: document.getElementById("rangeHeatmapMeta"),
-  rangeHeatmapSelect: document.getElementById("rangeHeatmapSelect"),
-  allTimeHeatmapMeta: document.getElementById("allTimeHeatmapMeta"),
+  shotPopover: document.getElementById("shotPopover"),
+  shotPopoverTitle: document.getElementById("shotPopoverTitle"),
+  popoverMakeBtn: document.getElementById("popoverMakeBtn"),
+  popoverMissBtn: document.getElementById("popoverMissBtn"),
+  focusHeatmap: document.getElementById("focusHeatmap"),
+  focusHeatmapMeta: document.getElementById("focusHeatmapMeta"),
+  focusHeatmapSelect: document.getElementById("focusHeatmapSelect"),
+  insightScope: document.getElementById("insightScope"),
+  streakGrid: document.getElementById("streakGrid"),
+  comparisonGrid: document.getElementById("comparisonGrid"),
+  bestZonesList: document.getElementById("bestZonesList"),
+  weakZonesList: document.getElementById("weakZonesList"),
+  importBtn: document.getElementById("importBtn"),
+  csvImportInput: document.getElementById("csvImportInput"),
   sessionChart: document.getElementById("sessionChart"),
   dailyChart: document.getElementById("dailyChart"),
 };
@@ -146,7 +161,7 @@ let state = loadState();
 let selectedDate = state.settings.selectedDate || localDateKey();
 let selectedSessionId = state.settings.selectedSessionId || null;
 let selectedZoneId = null;
-let selectedRange = state.settings.selectedRange || "today";
+let selectedRange = state.settings.selectedRange || "session";
 let courtImageLoaded = false;
 let sessionChart;
 let dailyChart;
@@ -202,7 +217,17 @@ function saveState() {
   state.settings.selectedDate = selectedDate;
   state.settings.selectedSessionId = selectedSessionId;
   state.settings.selectedRange = selectedRange;
+  state.settings.goals = normalizeGoals(state.settings.goals);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function normalizeGoals(goals = {}) {
+  return {
+    sessionAttempts: Number(goals.sessionAttempts) || 0,
+    sessionPct: Number(goals.sessionPct) || 0,
+    zoneAttempts: Number(goals.zoneAttempts) || 0,
+    zonePct: Number(goals.zonePct) || 0,
+  };
 }
 
 function snapshot(action) {
@@ -237,6 +262,7 @@ function createSessionObject(name) {
   return {
     id: uid("session"),
     name,
+    notes: "",
     shots: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -251,6 +277,9 @@ function currentSession() {
   const day = currentDay();
   if (!selectedSessionId || !day.sessions[selectedSessionId]) {
     selectedSessionId = day.sessionOrder[0];
+  }
+  if (typeof day.sessions[selectedSessionId].notes !== "string") {
+    day.sessions[selectedSessionId].notes = "";
   }
   return day.sessions[selectedSessionId];
 }
@@ -286,6 +315,73 @@ function statsFor(shots, zoneId = null) {
   const attempts = filtered.length;
   const made = filtered.filter((shot) => shot.made).length;
   return { made, attempts, pct: attempts ? Math.round((made / attempts) * 100) : 0 };
+}
+
+function threePointShots(shots) {
+  const threeIds = new Set(zones.filter((zone) => zone.type === "3PT").map((zone) => zone.id));
+  return shots.filter((shot) => threeIds.has(shot.zoneId));
+}
+
+function getScopeShots(scope = selectedRange) {
+  if (scope === "session") return currentSession().shots;
+  if (scope === "previous-day") return storedDayShots(shiftDateKey(selectedDate, -1));
+  if (scope === "last-week") return shotsBetween(shiftDateKey(selectedDate, -6), selectedDate);
+  if (scope === "last-month") return shotsBetween(shiftDateKey(selectedDate, -29), selectedDate);
+  if (scope === "all-time") return allShots();
+  return dayShots(selectedDate);
+}
+
+function getScopeLabel(scope = selectedRange) {
+  if (scope === "session") return currentSession().name;
+  if (scope === "previous-day") return formatDateLabel(shiftDateKey(selectedDate, -1));
+  if (scope === "last-week") {
+    return `${formatDateLabel(shiftDateKey(selectedDate, -6))} - ${formatDateLabel(selectedDate)}`;
+  }
+  if (scope === "last-month") {
+    return `${formatDateLabel(shiftDateKey(selectedDate, -29))} - ${formatDateLabel(selectedDate)}`;
+  }
+  if (scope === "all-time") return "All Time";
+  return formatDateLabel(selectedDate);
+}
+
+function computeStreaks(shots) {
+  const ordered = [...shots].sort((a, b) => a.timestamp - b.timestamp);
+  let bestMake = 0;
+  let bestMiss = 0;
+  let runType = null;
+  let runLength = 0;
+
+  ordered.forEach((shot) => {
+    const type = shot.made ? "make" : "miss";
+    if (type === runType) {
+      runLength += 1;
+    } else {
+      runType = type;
+      runLength = 1;
+    }
+    if (type === "make") bestMake = Math.max(bestMake, runLength);
+    if (type === "miss") bestMiss = Math.max(bestMiss, runLength);
+  });
+
+  const last = ordered[ordered.length - 1];
+  return {
+    bestMake,
+    bestMiss,
+    current: ordered.length ? runLength : 0,
+    currentType: last ? (last.made ? "makes" : "misses") : "none",
+  };
+}
+
+function rankedZones(shots) {
+  return zones
+    .map((zone) => ({ zone, ...statsFor(shots, zone.id) }))
+    .filter((item) => item.attempts > 0)
+    .sort((a, b) => b.pct - a.pct || b.attempts - a.attempts);
+}
+
+function progressPercent(value, target) {
+  if (!target) return 0;
+  return Math.max(0, Math.min(100, Math.round((value / target) * 100)));
 }
 
 function colorFor(stat) {
@@ -343,6 +439,7 @@ function selectZone(zoneId) {
   els.makeBtn.disabled = false;
   els.missBtn.disabled = false;
   renderAll();
+  renderShotPopover();
 }
 
 function recordShot(made) {
@@ -359,8 +456,22 @@ function recordShot(made) {
   const session = currentSession();
   session.shots.push(shot);
   session.updatedAt = Date.now();
+  els.shotPopover.classList.add("hidden");
   saveState();
   renderAll();
+}
+
+function renderShotPopover() {
+  if (!selectedZoneId) {
+    els.shotPopover.classList.add("hidden");
+    return;
+  }
+  const zone = zones.find((item) => item.id === selectedZoneId);
+  const [x, y] = zone.label;
+  els.shotPopoverTitle.textContent = zone.name;
+  els.shotPopover.style.left = `${(x / 746) * 100}%`;
+  els.shotPopover.style.top = `${Math.max(18, (y / 507) * 100)}%`;
+  els.shotPopover.classList.remove("hidden");
 }
 
 function renderSessions() {
@@ -375,6 +486,58 @@ function renderSessions() {
     els.sessionSelect.appendChild(option);
   });
   els.sessionSelect.value = currentSession().id;
+}
+
+function renderSessionNotes() {
+  const session = currentSession();
+  if (document.activeElement !== els.sessionNotes) {
+    els.sessionNotes.value = session.notes || "";
+  }
+  els.notesSavedBadge.textContent = "Saved";
+  els.notesSavedBadge.classList.remove("dirty");
+}
+
+function renderGoals() {
+  const goals = normalizeGoals(state.settings.goals);
+  if (document.activeElement !== els.sessionAttemptGoal) {
+    els.sessionAttemptGoal.value = goals.sessionAttempts || "";
+  }
+  if (document.activeElement !== els.sessionPctGoal) {
+    els.sessionPctGoal.value = goals.sessionPct || "";
+  }
+  if (document.activeElement !== els.zoneAttemptGoal) {
+    els.zoneAttemptGoal.value = goals.zoneAttempts || "";
+  }
+  if (document.activeElement !== els.zonePctGoal) {
+    els.zonePctGoal.value = goals.zonePct || "";
+  }
+
+  const sessionStats = statsFor(currentSession().shots);
+  const zoneStats = selectedZoneId ? statsFor(currentSession().shots, selectedZoneId) : null;
+  const rows = [
+    ["Session attempts", sessionStats.attempts, goals.sessionAttempts, ""],
+    ["Session FG%", sessionStats.pct, goals.sessionPct, "%"],
+  ];
+
+  if (selectedZoneId && zoneStats) {
+    const zoneName = zones.find((zone) => zone.id === selectedZoneId)?.name || "Zone";
+    rows.push([`${zoneName} attempts`, zoneStats.attempts, goals.zoneAttempts, ""]);
+    rows.push([`${zoneName} FG%`, zoneStats.pct, goals.zonePct, "%"]);
+  }
+
+  const activeRows = rows.filter(([, , target]) => target > 0);
+  const averageProgress = activeRows.length
+    ? Math.round(activeRows.reduce((sum, [, value, target]) => sum + progressPercent(value, target), 0) / activeRows.length)
+    : 0;
+  els.goalSummary.textContent = `${averageProgress}%`;
+  els.goalProgress.innerHTML = activeRows.length
+    ? activeRows
+        .map(([label, value, target, unit]) => {
+          const pct = progressPercent(value, target);
+          return `<div class="goal-row"><span><b>${label}</b><em>${value}${unit} / ${target}${unit}</em></span><div class="goal-track"><div class="goal-fill" style="width:${pct}%"></div></div></div>`;
+        })
+        .join("")
+    : `<div class="goal-row"><span><b>No goals set</b><em>Set a target above</em></span><div class="goal-track"><div class="goal-fill" style="width:0%"></div></div></div>`;
 }
 
 function renderStats() {
@@ -475,40 +638,64 @@ function renderHeatmap(container, shots) {
 }
 
 function renderHeatmaps() {
-  const sessionShots = currentSession().shots;
-  const rangeShots = getRangeHeatmapShots();
-  const lifetimeShots = allShots();
-  els.sessionHeatmapMeta.textContent = `${sessionShots.length} shot${sessionShots.length === 1 ? "" : "s"}`;
-  els.rangeHeatmapSelect.value = selectedRange;
-  els.rangeHeatmapMeta.textContent = `${getRangeHeatmapLabel()} • ${rangeShots.length} shot${rangeShots.length === 1 ? "" : "s"}`;
-  els.allTimeHeatmapMeta.textContent = `${lifetimeShots.length} shot${lifetimeShots.length === 1 ? "" : "s"}`;
-  renderHeatmap(els.sessionHeatmap, sessionShots);
-  renderHeatmap(els.rangeHeatmap, rangeShots);
-  renderHeatmap(els.allTimeHeatmap, lifetimeShots);
+  const focusShots = getScopeShots();
+  els.focusHeatmapSelect.value = selectedRange;
+  els.focusHeatmapMeta.textContent = `${getScopeLabel()} • ${focusShots.length} shot${focusShots.length === 1 ? "" : "s"}`;
+  renderHeatmap(els.focusHeatmap, focusShots);
 }
 
-function getRangeHeatmapShots() {
-  if (selectedRange === "previous-day") {
-    return storedDayShots(shiftDateKey(selectedDate, -1));
-  }
-  if (selectedRange === "last-week") {
-    return shotsBetween(shiftDateKey(selectedDate, -6), selectedDate);
-  }
-  if (selectedRange === "last-month") {
-    return shotsBetween(shiftDateKey(selectedDate, -29), selectedDate);
-  }
-  return dayShots(selectedDate);
+function renderInsights() {
+  const focusShots = getScopeShots();
+  const selectedZoneShots = selectedZoneId ? focusShots.filter((shot) => shot.zoneId === selectedZoneId) : [];
+  const streaks = [
+    ["Scope make streak", computeStreaks(focusShots), "All selected shots"],
+    ["3PT make streak", computeStreaks(threePointShots(focusShots)), "Only three-point zones"],
+    [
+      "Zone make streak",
+      computeStreaks(selectedZoneShots),
+      selectedZoneId ? zones.find((zone) => zone.id === selectedZoneId).name : "Pick a zone",
+    ],
+  ];
+
+  els.insightScope.textContent = getScopeLabel();
+  els.streakGrid.innerHTML = streaks
+    .map(
+      ([label, streak, note]) =>
+        `<article class="metric-tile"><span>${label}</span><strong>${streak.bestMake}</strong><small>Current: ${streak.current} ${streak.currentType} • ${note}</small></article>`,
+    )
+    .join("");
+
+  const today = statsFor(storedDayShots(selectedDate));
+  const previous = statsFor(storedDayShots(shiftDateKey(selectedDate, -1)));
+  const week = statsFor(shotsBetween(shiftDateKey(selectedDate, -6), selectedDate));
+  const previousWeek = statsFor(shotsBetween(shiftDateKey(selectedDate, -13), shiftDateKey(selectedDate, -7)));
+  els.comparisonGrid.innerHTML = [
+    ["Today vs prev", today.pct - previous.pct, `${today.pct}% / ${previous.pct}%`],
+    ["Week vs prev", week.pct - previousWeek.pct, `${week.pct}% / ${previousWeek.pct}%`],
+  ]
+    .map(([label, diff, detail]) => {
+      const sign = diff > 0 ? "+" : "";
+      return `<article class="metric-tile"><span>${label}</span><strong>${sign}${diff} pts</strong><small>${detail}</small></article>`;
+    })
+    .join("");
+
+  const ranked = rankedZones(focusShots);
+  const best = ranked.slice(0, 3);
+  const weak = [...ranked].sort((a, b) => a.pct - b.pct || b.attempts - a.attempts).slice(0, 3);
+  els.bestZonesList.innerHTML = renderZoneRankRows(best, "No makes yet");
+  els.weakZonesList.innerHTML = renderZoneRankRows(weak, "No focus zones yet");
 }
 
-function getRangeHeatmapLabel() {
-  if (selectedRange === "previous-day") return formatDateLabel(shiftDateKey(selectedDate, -1));
-  if (selectedRange === "last-week") {
-    return `${formatDateLabel(shiftDateKey(selectedDate, -6))} - ${formatDateLabel(selectedDate)}`;
+function renderZoneRankRows(items, emptyText) {
+  if (!items.length) {
+    return `<div class="zone-rank-row"><span>${emptyText}<small>Record shots to populate this.</small></span><strong>0%</strong></div>`;
   }
-  if (selectedRange === "last-month") {
-    return `${formatDateLabel(shiftDateKey(selectedDate, -29))} - ${formatDateLabel(selectedDate)}`;
-  }
-  return formatDateLabel(selectedDate);
+  return items
+    .map(
+      (item) =>
+        `<button type="button" class="zone-rank-row" data-zone-rank="${item.zone.id}"><span>${item.zone.name}<small>${item.made}/${item.attempts}</small></span><strong>${item.pct}%</strong></button>`,
+    )
+    .join("");
 }
 
 function chartDefaults() {
@@ -729,18 +916,23 @@ function renderAll() {
   currentDay();
   currentSession();
   renderSessions();
+  renderSessionNotes();
   renderDate();
   renderCourt();
   renderStats();
+  renderGoals();
   renderHeatmaps();
+  renderInsights();
   renderPastDays();
   renderCharts();
   renderStatus();
+  renderShotPopover();
   els.undoBtn.disabled = state.undo.length === 0;
   saveState();
 }
 
 function changeDate(offset) {
+  saveSessionNotes();
   const date = dateFromKey(selectedDate);
   date.setDate(date.getDate() + offset);
   selectedDate = localDateKey(date);
@@ -812,7 +1004,7 @@ function undoLast() {
   state.settings = restored.settings || {};
   selectedDate = state.settings.selectedDate || localDateKey();
   selectedSessionId = state.settings.selectedSessionId || null;
-  selectedRange = state.settings.selectedRange || "today";
+  selectedRange = state.settings.selectedRange || "session";
   selectedZoneId = null;
   saveState();
   renderAll();
@@ -847,10 +1039,139 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
+function saveSessionNotes() {
+  const session = currentSession();
+  const nextNotes = els.sessionNotes.value;
+  if ((session.notes || "") === nextNotes) {
+    els.notesSavedBadge.textContent = "Saved";
+    els.notesSavedBadge.classList.remove("dirty");
+    return;
+  }
+  snapshot("Edit session notes");
+  session.notes = nextNotes;
+  session.updatedAt = Date.now();
+  els.notesSavedBadge.textContent = "Saved";
+  els.notesSavedBadge.classList.remove("dirty");
+  saveState();
+}
+
+function saveGoalsFromInputs() {
+  state.settings.goals = normalizeGoals({
+    sessionAttempts: els.sessionAttemptGoal.value,
+    sessionPct: els.sessionPctGoal.value,
+    zoneAttempts: els.zoneAttemptGoal.value,
+    zonePct: els.zonePctGoal.value,
+  });
+  saveState();
+  renderGoals();
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell);
+      if (row.some((value) => value.trim() !== "")) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some((value) => value.trim() !== "")) rows.push(row);
+  return rows;
+}
+
+function importCsvFile(file) {
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    const rows = parseCsv(String(reader.result || ""));
+    if (rows.length < 2) {
+      alert("No shots found in this CSV.");
+      return;
+    }
+
+    const headers = rows[0].map((header) => header.trim().toLowerCase());
+    const indexOf = (name) => headers.indexOf(name);
+    const dateIndex = indexOf("date");
+    const sessionIndex = indexOf("session");
+    const zoneIndex = indexOf("zone");
+    const madeIndex = indexOf("made");
+    const timestampIndex = indexOf("timestamp");
+
+    if (dateIndex < 0 || zoneIndex < 0 || madeIndex < 0) {
+      alert("CSV must include date, zone, and made columns.");
+      return;
+    }
+
+    snapshot("Import CSV");
+    let imported = 0;
+    rows.slice(1).forEach((row) => {
+      const date = row[dateIndex]?.trim();
+      const zoneValue = row[zoneIndex]?.trim();
+      const madeValue = row[madeIndex]?.trim().toLowerCase();
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !zoneValue) return;
+
+      const zone = zones.find((item) => item.id === zoneValue || item.name.toLowerCase() === zoneValue.toLowerCase());
+      if (!zone) return;
+
+      const day = ensureDay(date);
+      const sessionName = row[sessionIndex]?.trim() || "Imported Session";
+      let sessionId = day.sessionOrder.find((id) => day.sessions[id]?.name === sessionName);
+      if (!sessionId) {
+        const session = createSessionObject(sessionName);
+        day.sessions[session.id] = session;
+        day.sessionOrder.push(session.id);
+        sessionId = session.id;
+      }
+
+      const timestampRaw = row[timestampIndex]?.trim();
+      const parsedTime = timestampRaw ? Date.parse(timestampRaw) : NaN;
+      day.sessions[sessionId].shots.push({
+        id: uid("shot"),
+        date,
+        sessionId,
+        zoneId: zone.id,
+        made: madeValue === "make" || madeValue === "made" || madeValue === "true" || madeValue === "1",
+        timestamp: Number.isNaN(parsedTime) ? Date.now() : parsedTime,
+      });
+      day.sessions[sessionId].updatedAt = Date.now();
+      imported += 1;
+    });
+
+    if (!imported) {
+      undoLast();
+      alert("No valid shots could be imported.");
+      return;
+    }
+    saveState();
+    renderAll();
+    alert(`Imported ${imported} shots.`);
+  });
+  reader.readAsText(file);
+}
+
 function bindEvents() {
   els.prevDayBtn.addEventListener("click", () => changeDate(-1));
   els.nextDayBtn.addEventListener("click", () => changeDate(1));
   els.datePicker.addEventListener("change", (event) => {
+    saveSessionNotes();
     selectedDate = event.target.value || localDateKey();
     selectedSessionId = null;
     selectedZoneId = null;
@@ -860,20 +1181,42 @@ function bindEvents() {
   els.newSessionBtn.addEventListener("click", createSession);
   els.renameSessionBtn.addEventListener("click", renameSession);
   els.deleteSessionBtn.addEventListener("click", deleteSession);
+  els.sessionNotes.addEventListener("input", () => {
+    els.notesSavedBadge.textContent = "Unsaved";
+    els.notesSavedBadge.classList.add("dirty");
+  });
+  els.sessionNotes.addEventListener("blur", saveSessionNotes);
+  [els.sessionAttemptGoal, els.sessionPctGoal, els.zoneAttemptGoal, els.zonePctGoal].forEach((input) => {
+    input.addEventListener("change", saveGoalsFromInputs);
+  });
   els.sessionSelect.addEventListener("change", (event) => {
+    saveSessionNotes();
     selectedSessionId = event.target.value;
     selectedZoneId = null;
     renderAll();
   });
   els.makeBtn.addEventListener("click", () => recordShot(true));
   els.missBtn.addEventListener("click", () => recordShot(false));
-  els.rangeHeatmapSelect.addEventListener("change", (event) => {
+  els.popoverMakeBtn.addEventListener("click", () => recordShot(true));
+  els.popoverMissBtn.addEventListener("click", () => recordShot(false));
+  els.focusHeatmapSelect.addEventListener("change", (event) => {
     selectedRange = event.target.value;
     saveState();
     renderHeatmaps();
+    renderInsights();
   });
   els.undoBtn.addEventListener("click", undoLast);
   els.exportBtn.addEventListener("click", exportCsv);
+  els.importBtn.addEventListener("click", () => els.csvImportInput.click());
+  els.csvImportInput.addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    if (file) importCsvFile(file);
+    event.target.value = "";
+  });
+  document.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-zone-rank]");
+    if (row) selectZone(row.dataset.zoneRank);
+  });
   els.statusBtn.addEventListener("click", () => {
     els.statusDetails.classList.toggle("collapsed");
     renderStatus();

@@ -43,6 +43,40 @@
           </div>
         </section>
 
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Session Notes</h2>
+            <span id="notesSavedBadge">Saved</span>
+          </div>
+          <textarea id="sessionNotes" rows="4" placeholder="How did this session feel?"></textarea>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Goals</h2>
+            <span id="goalSummary">0%</span>
+          </div>
+          <div class="goal-grid">
+            <label>
+              <span>Session attempts</span>
+              <input id="sessionAttemptGoal" type="number" min="0" step="1" />
+            </label>
+            <label>
+              <span>Session FG%</span>
+              <input id="sessionPctGoal" type="number" min="0" max="100" step="1" />
+            </label>
+            <label>
+              <span>Selected zone attempts</span>
+              <input id="zoneAttemptGoal" type="number" min="0" step="1" />
+            </label>
+            <label>
+              <span>Selected zone FG%</span>
+              <input id="zonePctGoal" type="number" min="0" max="100" step="1" />
+            </label>
+          </div>
+          <div id="goalProgress" class="goal-progress-list"></div>
+        </section>
+
         <section class="stats-stack">
           <article class="stat-card">
             <span>Session</span>
@@ -84,7 +118,9 @@
 
         <section class="panel actions-panel">
           <button id="exportBtn" type="button">Export CSV</button>
+          <button id="importBtn" type="button">Import CSV</button>
           <button id="undoBtn" type="button">Undo</button>
+          <input id="csvImportInput" type="file" accept=".csv,text/csv" hidden />
         </section>
       </aside>
 
@@ -110,38 +146,52 @@
               role="img"
               aria-label="Interactive shot zones"
             ></svg>
+            <div id="shotPopover" class="shot-popover hidden">
+              <strong id="shotPopoverTitle">Zone</strong>
+              <div>
+                <button id="popoverMakeBtn" type="button" class="make-btn">Make</button>
+                <button id="popoverMissBtn" type="button" class="miss-btn">Miss</button>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section class="heatmap-grid">
-          <article class="analytics-card">
-            <div class="analytics-header">
-              <h2>Session Heatmap</h2>
-              <span id="sessionHeatmapMeta">0 shots</span>
-            </div>
-            <div id="sessionHeatmap" class="mini-heatmap"></div>
-          </article>
-          <article class="analytics-card">
+        <section class="focus-grid">
+          <article class="analytics-card focus-heatmap-card">
             <div class="analytics-header">
               <div>
-                <h2>Range Heatmap</h2>
-                <span id="rangeHeatmapMeta">0 shots</span>
+                <h2>Focus Heatmap</h2>
+                <span id="focusHeatmapMeta">0 shots</span>
               </div>
-              <select id="rangeHeatmapSelect" class="range-select" aria-label="Heatmap range">
+              <select id="focusHeatmapSelect" class="range-select" aria-label="Heatmap range">
+                <option value="session">Diese Session</option>
                 <option value="today">Dieser Tag</option>
                 <option value="previous-day">Letzter Tag</option>
                 <option value="last-week">Letzte Woche</option>
                 <option value="last-month">Letzter Monat</option>
+                <option value="all-time">All Time</option>
               </select>
             </div>
-            <div id="rangeHeatmap" class="mini-heatmap"></div>
+            <div id="focusHeatmap" class="mini-heatmap"></div>
           </article>
-          <article class="analytics-card">
+
+          <article class="analytics-card insights-card">
             <div class="analytics-header">
-              <h2>All-Time Heatmap</h2>
-              <span id="allTimeHeatmapMeta">0 shots</span>
+              <h2>Insights</h2>
+              <span id="insightScope">Current scope</span>
             </div>
-            <div id="allTimeHeatmap" class="mini-heatmap"></div>
+            <div id="streakGrid" class="metric-grid"></div>
+            <div id="comparisonGrid" class="metric-grid compact-metrics"></div>
+            <div class="zone-list-wrap">
+              <div>
+                <h3>Best Zones</h3>
+                <div id="bestZonesList" class="zone-rank-list"></div>
+              </div>
+              <div>
+                <h3>Focus Zones</h3>
+                <div id="weakZonesList" class="zone-rank-list"></div>
+              </div>
+            </div>
           </article>
         </section>
 

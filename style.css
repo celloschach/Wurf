@@ -37,7 +37,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -65,8 +66,13 @@ button:disabled {
   opacity: 0.48;
 }
 
+.hidden {
+  display: none !important;
+}
+
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 2.55rem;
   border: 1px solid var(--line);
@@ -78,9 +84,17 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: rgba(247, 201, 72, 0.75);
   box-shadow: 0 0 0 3px rgba(247, 201, 72, 0.14);
+}
+
+textarea {
+  min-height: 6.25rem;
+  padding: 0.75rem;
+  resize: vertical;
+  line-height: 1.4;
 }
 
 .app-shell {
@@ -205,6 +219,10 @@ select:focus {
   margin-top: 0.55rem;
 }
 
+.actions-panel {
+  margin-top: 0;
+}
+
 .danger-btn,
 .icon-danger {
   background: #ff8793;
@@ -275,7 +293,9 @@ select:focus {
   box-shadow: 0 0 0 4px rgba(41, 209, 125, 0.12);
 }
 
-#dayCountBadge {
+#dayCountBadge,
+#notesSavedBadge,
+#goalSummary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -286,6 +306,67 @@ select:focus {
   background: var(--neutral);
   font-size: 0.76rem;
   font-weight: 900;
+}
+
+#notesSavedBadge {
+  min-width: 3.3rem;
+  background: rgba(41, 209, 125, 0.9);
+}
+
+#notesSavedBadge.dirty {
+  background: var(--orange);
+}
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.goal-grid label {
+  display: grid;
+  gap: 0.32rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.goal-grid input {
+  min-height: 2.25rem;
+}
+
+.goal-progress-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.goal-row {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.goal-row span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.goal-track {
+  overflow: hidden;
+  height: 0.55rem;
+  border-radius: 99rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.goal-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--orange), var(--green));
+  transition: width 180ms ease;
 }
 
 .past-days {
@@ -390,6 +471,42 @@ select:focus {
   pointer-events: none;
 }
 
+.shot-popover {
+  position: absolute;
+  z-index: 4;
+  display: none;
+  min-width: 11rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.65rem;
+  background: rgba(10, 13, 19, 0.92);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -118%);
+  backdrop-filter: blur(10px);
+}
+
+.shot-popover:not(.hidden) {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.shot-popover strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.shot-popover div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.shot-popover button {
+  min-height: 2.25rem;
+}
+
 .zone-path {
   cursor: pointer;
   stroke: rgba(255, 255, 255, 0.86);
@@ -430,15 +547,15 @@ select:focus {
   font-weight: 850;
 }
 
-.heatmap-grid,
+.focus-grid,
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
 }
 
-.heatmap-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.focus-heatmap-card {
+  min-width: 0;
 }
 
 .analytics-card {
@@ -531,6 +648,79 @@ select:focus {
   font-weight: 900;
 }
 
+.insights-card {
+  display: grid;
+  align-content: start;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.compact-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.75rem;
+}
+
+.metric-tile {
+  min-height: 5.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.metric-tile span,
+.metric-tile small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.metric-tile strong {
+  display: block;
+  margin: 0.25rem 0;
+  font-size: 1.25rem;
+}
+
+.zone-list-wrap {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.zone-list-wrap h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.86rem;
+}
+
+.zone-rank-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.zone-rank-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 2.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.65rem;
+  padding: 0.52rem 0.62rem;
+  color: var(--text);
+  background: #0d1119;
+  text-align: left;
+}
+
+.zone-rank-row small {
+  display: block;
+  color: var(--muted);
+}
+
 .chart-card {
   min-height: 22rem;
 }
@@ -543,10 +733,6 @@ select:focus {
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
-  }
-
-  .heatmap-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sidebar {
@@ -568,8 +754,15 @@ select:focus {
   }
 
   .sidebar,
-  .heatmap-grid,
+  .focus-grid,
   .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-grid,
+  .metric-grid,
+  .compact-metrics,
+  .zone-list-wrap {
     grid-template-columns: 1fr;
   }
 
@@ -602,6 +795,10 @@ select:focus {
   .shot-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .shot-popover {
+    display: grid;
   }
 
   .mini-zone-label {
