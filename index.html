@@ -74,6 +74,12 @@
 
       <main class="main-content">
         <header class="topbar">
+          <div class="training-strip">
+            <strong id="trainingStripSession">Main Session</strong>
+            <span id="trainingStripDate">Today</span>
+            <span id="trainingStripStats">0/0 • 0%</span>
+            <span id="trainingStripZone">No zone selected</span>
+          </div>
           <nav class="tab-nav" aria-label="App sections">
             <button class="tab-btn active" type="button" data-tab-target="track">Track</button>
             <button class="tab-btn" type="button" data-tab-target="analyze">Analyze</button>
@@ -90,6 +96,7 @@
                 <h2 id="courtTitle">Select a zone</h2>
               </div>
               <div class="shot-controls">
+                <button id="focusModeBtn" type="button" class="ghost-btn">Focus</button>
                 <button id="makeBtn" type="button" class="make-btn" disabled>Make</button>
                 <button id="missBtn" type="button" class="miss-btn" disabled>Miss</button>
               </div>
@@ -115,6 +122,14 @@
           </section>
 
           <section class="track-support-grid">
+            <article class="analytics-card zone-detail-card">
+              <div class="analytics-header">
+                <h2>Zone Detail</h2>
+                <span id="zoneDetailScope">Session / Week / All Time</span>
+              </div>
+              <div id="zoneDetail" class="zone-detail empty-state"></div>
+            </article>
+
             <article class="analytics-card">
               <div class="analytics-header">
                 <h2>Session Notes</h2>
@@ -129,6 +144,14 @@
                 <span id="goalSummary">0%</span>
               </div>
               <div id="goalProgress" class="goal-progress-list"></div>
+            </article>
+
+            <article class="analytics-card timeline-card">
+              <div class="analytics-header">
+                <h2>Shot Timeline</h2>
+                <span id="shotTimelineMeta">0 shots</span>
+              </div>
+              <div id="shotTimeline" class="shot-timeline"></div>
             </article>
           </section>
         </section>
@@ -151,6 +174,12 @@
                 </select>
               </div>
               <div id="focusHeatmap" class="mini-heatmap"></div>
+              <div class="heatmap-legend" aria-label="Heatmap legend">
+                <span><i class="legend-neutral"></i>No attempts</span>
+                <span><i class="legend-cold"></i>Cold</span>
+                <span><i class="legend-average"></i>Average</span>
+                <span><i class="legend-hot"></i>Hot</span>
+              </div>
             </article>
 
             <article class="analytics-card insights-card">
@@ -253,6 +282,16 @@
           </section>
         </section>
       </main>
+    </div>
+
+    <div class="mobile-action-bar">
+      <div>
+        <strong id="mobileActionStat">0/0</strong>
+        <span id="mobileActionZone">Pick a zone</span>
+      </div>
+      <button id="mobileUndoBtn" type="button" class="ghost-btn">Undo</button>
+      <button id="mobileMakeBtn" type="button" class="make-btn" disabled>Make</button>
+      <button id="mobileMissBtn" type="button" class="miss-btn" disabled>Miss</button>
     </div>
 
     <script src="script.js"></script>
