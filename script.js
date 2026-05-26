@@ -405,14 +405,49 @@ function renderPastDays() {
 
 function renderHeatmap(container, shots) {
   container.innerHTML = "";
+  const image = document.createElement("img");
+  image.src = els.courtImage.currentSrc || els.courtImage.src || "court.png";
+  image.alt = "";
+  container.appendChild(image);
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 746 507");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.setAttribute("aria-label", "Mini shot heatmap");
+  container.appendChild(svg);
+
   zones.forEach((zone) => {
     const stat = statsFor(shots, zone.id);
-    const tile = document.createElement("div");
-    tile.className = "heat-tile";
-    tile.style.background = colorFor(stat);
-    tile.innerHTML = `<strong>${zone.name}</strong><span>${stat.pct}%</span><small>${stat.made}/${stat.attempts}</small>`;
-    tile.addEventListener("click", () => selectZone(zone.id));
-    container.appendChild(tile);
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("data-zone-id", zone.id);
+    group.setAttribute("aria-label", `${zone.name}: ${stat.made} made of ${stat.attempts}`);
+
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = `${zone.name}: ${stat.made}/${stat.attempts} • ${stat.pct}%`;
+    group.appendChild(title);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", zone.d);
+    path.setAttribute("fill", colorFor(stat));
+    path.setAttribute("class", `mini-zone-path${selectedZoneId === zone.id ? " selected" : ""}`);
+    path.addEventListener("click", () => selectZone(zone.id));
+    group.appendChild(path);
+
+    const pctText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    pctText.setAttribute("x", zone.label[0]);
+    pctText.setAttribute("y", zone.label[1] - 7);
+    pctText.setAttribute("class", "mini-zone-label");
+    pctText.textContent = stat.attempts ? `${stat.pct}%` : "0%";
+    group.appendChild(pctText);
+
+    const volumeText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    volumeText.setAttribute("x", zone.label[0]);
+    volumeText.setAttribute("y", zone.label[1] + 10);
+    volumeText.setAttribute("class", "mini-zone-label mini-zone-sub-label");
+    volumeText.textContent = `${stat.made}/${stat.attempts}`;
+    group.appendChild(volumeText);
+
+    svg.appendChild(group);
   });
 }
 
@@ -788,6 +823,7 @@ function bindEvents() {
   });
   els.courtImage.addEventListener("load", () => {
     courtImageLoaded = true;
+    renderHeatmaps();
     renderStatus();
   });
   els.courtImage.addEventListener("error", () => {
