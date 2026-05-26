@@ -14,13 +14,13 @@
           <div class="brand-mark">3</div>
           <div>
             <h1>ArcLab</h1>
-            <p>Three-point shot analytics</p>
+            <p>Shot tracking cockpit</p>
           </div>
         </header>
 
-        <section class="panel">
+        <section class="panel control-panel">
           <div class="panel-title">
-            <h2>Date</h2>
+            <h2>Training Day</h2>
             <button id="deleteDayBtn" class="icon-danger" type="button" title="Delete day">Delete</button>
           </div>
           <div class="date-row">
@@ -31,9 +31,9 @@
           <p id="dateSummary" class="microcopy"></p>
         </section>
 
-        <section class="panel">
+        <section class="panel control-panel">
           <div class="panel-title">
-            <h2>Sessions</h2>
+            <h2>Session</h2>
             <button id="newSessionBtn" type="button">New</button>
           </div>
           <select id="sessionSelect" aria-label="Current session"></select>
@@ -41,40 +41,6 @@
             <button id="renameSessionBtn" type="button">Rename</button>
             <button id="deleteSessionBtn" type="button" class="danger-btn">Delete</button>
           </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h2>Session Notes</h2>
-            <span id="notesSavedBadge">Saved</span>
-          </div>
-          <textarea id="sessionNotes" rows="4" placeholder="How did this session feel?"></textarea>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h2>Goals</h2>
-            <span id="goalSummary">0%</span>
-          </div>
-          <div class="goal-grid">
-            <label>
-              <span>Session attempts</span>
-              <input id="sessionAttemptGoal" type="number" min="0" step="1" />
-            </label>
-            <label>
-              <span>Session FG%</span>
-              <input id="sessionPctGoal" type="number" min="0" max="100" step="1" />
-            </label>
-            <label>
-              <span>Selected zone attempts</span>
-              <input id="zoneAttemptGoal" type="number" min="0" step="1" />
-            </label>
-            <label>
-              <span>Selected zone FG%</span>
-              <input id="zonePctGoal" type="number" min="0" max="100" step="1" />
-            </label>
-          </div>
-          <div id="goalProgress" class="goal-progress-list"></div>
         </section>
 
         <section class="stats-stack">
@@ -100,116 +66,191 @@
           </article>
         </section>
 
-        <section class="panel status-panel">
-          <div class="panel-title">
-            <h2>Status</h2>
-            <button id="statusBtn" type="button">Status</button>
-          </div>
-          <div id="statusDetails" class="status-details collapsed"></div>
-        </section>
-
-        <section class="panel days-panel">
-          <div class="panel-title">
-            <h2>Past Days</h2>
-            <span id="dayCountBadge">0</span>
-          </div>
-          <div id="pastDaysList" class="past-days"></div>
-        </section>
-
         <section class="panel actions-panel">
-          <button id="exportBtn" type="button">Export CSV</button>
-          <button id="importBtn" type="button">Import CSV</button>
           <button id="undoBtn" type="button">Undo</button>
-          <input id="csvImportInput" type="file" accept=".csv,text/csv" hidden />
+          <button class="nav-jump" type="button" data-tab-target="analyze">Analyze</button>
         </section>
       </aside>
 
       <main class="main-content">
-        <section class="court-panel">
-          <div class="court-header">
-            <div>
-              <p class="eyebrow">Interactive Half Court</p>
-              <h2 id="courtTitle">Select a zone</h2>
-            </div>
-            <div class="shot-controls">
-              <button id="makeBtn" type="button" class="make-btn" disabled>Make</button>
-              <button id="missBtn" type="button" class="miss-btn" disabled>Miss</button>
-            </div>
-          </div>
+        <header class="topbar">
+          <nav class="tab-nav" aria-label="App sections">
+            <button class="tab-btn active" type="button" data-tab-target="track">Track</button>
+            <button class="tab-btn" type="button" data-tab-target="analyze">Analyze</button>
+            <button class="tab-btn" type="button" data-tab-target="history">History</button>
+            <button class="tab-btn" type="button" data-tab-target="settings">Settings</button>
+          </nav>
+        </header>
 
-          <div class="court-stage" id="courtStage">
-            <img id="courtImage" src="court.png" alt="Basketball half court" />
-            <svg
-              id="courtSvg"
-              viewBox="0 0 746 507"
-              preserveAspectRatio="xMidYMid meet"
-              role="img"
-              aria-label="Interactive shot zones"
-            ></svg>
-            <div id="shotPopover" class="shot-popover hidden">
-              <strong id="shotPopoverTitle">Zone</strong>
+        <section class="tab-panel active" data-tab-panel="track">
+          <section class="court-panel hero-court">
+            <div class="court-header">
               <div>
-                <button id="popoverMakeBtn" type="button" class="make-btn">Make</button>
-                <button id="popoverMissBtn" type="button" class="miss-btn">Miss</button>
+                <p class="eyebrow">Track Shots</p>
+                <h2 id="courtTitle">Select a zone</h2>
+              </div>
+              <div class="shot-controls">
+                <button id="makeBtn" type="button" class="make-btn" disabled>Make</button>
+                <button id="missBtn" type="button" class="miss-btn" disabled>Miss</button>
               </div>
             </div>
-          </div>
+
+            <div class="court-stage" id="courtStage">
+              <img id="courtImage" src="court.png" alt="Basketball half court" />
+              <svg
+                id="courtSvg"
+                viewBox="0 0 746 507"
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label="Interactive shot zones"
+              ></svg>
+              <div id="shotPopover" class="shot-popover hidden">
+                <strong id="shotPopoverTitle">Zone</strong>
+                <div>
+                  <button id="popoverMakeBtn" type="button" class="make-btn">Make</button>
+                  <button id="popoverMissBtn" type="button" class="miss-btn">Miss</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="track-support-grid">
+            <article class="analytics-card">
+              <div class="analytics-header">
+                <h2>Session Notes</h2>
+                <span id="notesSavedBadge">Saved</span>
+              </div>
+              <textarea id="sessionNotes" rows="4" placeholder="How did this session feel?"></textarea>
+            </article>
+
+            <article class="analytics-card">
+              <div class="analytics-header">
+                <h2>Goals</h2>
+                <span id="goalSummary">0%</span>
+              </div>
+              <div id="goalProgress" class="goal-progress-list"></div>
+            </article>
+          </section>
         </section>
 
-        <section class="focus-grid">
-          <article class="analytics-card focus-heatmap-card">
-            <div class="analytics-header">
-              <div>
-                <h2>Focus Heatmap</h2>
-                <span id="focusHeatmapMeta">0 shots</span>
+        <section class="tab-panel" data-tab-panel="analyze">
+          <section class="focus-grid">
+            <article class="analytics-card focus-heatmap-card">
+              <div class="analytics-header">
+                <div>
+                  <h2>Focus Heatmap</h2>
+                  <span id="focusHeatmapMeta">0 shots</span>
+                </div>
+                <select id="focusHeatmapSelect" class="range-select" aria-label="Heatmap range">
+                  <option value="session">Diese Session</option>
+                  <option value="today">Dieser Tag</option>
+                  <option value="previous-day">Letzter Tag</option>
+                  <option value="last-week">Letzte Woche</option>
+                  <option value="last-month">Letzter Monat</option>
+                  <option value="all-time">All Time</option>
+                </select>
               </div>
-              <select id="focusHeatmapSelect" class="range-select" aria-label="Heatmap range">
-                <option value="session">Diese Session</option>
-                <option value="today">Dieser Tag</option>
-                <option value="previous-day">Letzter Tag</option>
-                <option value="last-week">Letzte Woche</option>
-                <option value="last-month">Letzter Monat</option>
-                <option value="all-time">All Time</option>
-              </select>
-            </div>
-            <div id="focusHeatmap" class="mini-heatmap"></div>
-          </article>
+              <div id="focusHeatmap" class="mini-heatmap"></div>
+            </article>
 
-          <article class="analytics-card insights-card">
-            <div class="analytics-header">
-              <h2>Insights</h2>
-              <span id="insightScope">Current scope</span>
-            </div>
-            <div id="streakGrid" class="metric-grid"></div>
-            <div id="comparisonGrid" class="metric-grid compact-metrics"></div>
-            <div class="zone-list-wrap">
-              <div>
-                <h3>Best Zones</h3>
-                <div id="bestZonesList" class="zone-rank-list"></div>
+            <article class="analytics-card insights-card">
+              <div class="analytics-header">
+                <h2>Insights</h2>
+                <span id="insightScope">Current scope</span>
               </div>
-              <div>
-                <h3>Focus Zones</h3>
-                <div id="weakZonesList" class="zone-rank-list"></div>
+              <div id="streakGrid" class="metric-grid"></div>
+              <div id="comparisonGrid" class="metric-grid compact-metrics"></div>
+              <div class="zone-list-wrap">
+                <div>
+                  <h3>Best Zones</h3>
+                  <div id="bestZonesList" class="zone-rank-list"></div>
+                </div>
+                <div>
+                  <h3>Focus Zones</h3>
+                  <div id="weakZonesList" class="zone-rank-list"></div>
+                </div>
               </div>
-            </div>
-          </article>
+            </article>
+          </section>
+
+          <section class="charts-grid">
+            <article class="analytics-card chart-card">
+              <div class="analytics-header">
+                <h2>Session Progression</h2>
+                <span>Makes vs attempts</span>
+              </div>
+              <canvas id="sessionChart"></canvas>
+            </article>
+            <article class="analytics-card chart-card">
+              <div class="analytics-header">
+                <h2>Daily Trend</h2>
+                <span>FG% by day</span>
+              </div>
+              <canvas id="dailyChart"></canvas>
+            </article>
+          </section>
         </section>
 
-        <section class="charts-grid">
-          <article class="analytics-card chart-card">
+        <section class="tab-panel" data-tab-panel="history">
+          <section class="analytics-card history-card">
             <div class="analytics-header">
-              <h2>Session Progression</h2>
-              <span>Makes vs attempts</span>
+              <div>
+                <h2>Past Days</h2>
+                <span>Open a previous training day</span>
+              </div>
+              <span id="dayCountBadge">0</span>
             </div>
-            <canvas id="sessionChart"></canvas>
-          </article>
-          <article class="analytics-card chart-card">
-            <div class="analytics-header">
-              <h2>Daily Trend</h2>
-              <span>FG% by day</span>
-            </div>
-            <canvas id="dailyChart"></canvas>
-          </article>
+            <div id="pastDaysList" class="past-days"></div>
+          </section>
+        </section>
+
+        <section class="tab-panel" data-tab-panel="settings">
+          <section class="settings-grid">
+            <article class="analytics-card">
+              <div class="analytics-header">
+                <h2>Goal Settings</h2>
+                <span>Targets update live</span>
+              </div>
+              <div class="goal-grid">
+                <label>
+                  <span>Session attempts</span>
+                  <input id="sessionAttemptGoal" type="number" min="0" step="1" />
+                </label>
+                <label>
+                  <span>Session FG%</span>
+                  <input id="sessionPctGoal" type="number" min="0" max="100" step="1" />
+                </label>
+                <label>
+                  <span>Selected zone attempts</span>
+                  <input id="zoneAttemptGoal" type="number" min="0" step="1" />
+                </label>
+                <label>
+                  <span>Selected zone FG%</span>
+                  <input id="zonePctGoal" type="number" min="0" max="100" step="1" />
+                </label>
+              </div>
+            </article>
+
+            <article class="analytics-card">
+              <div class="analytics-header">
+                <h2>Data</h2>
+                <span>Local browser storage</span>
+              </div>
+              <div class="settings-actions">
+                <button id="exportBtn" type="button">Export CSV</button>
+                <button id="importBtn" type="button">Import CSV</button>
+                <input id="csvImportInput" type="file" accept=".csv,text/csv" hidden />
+              </div>
+            </article>
+
+            <article class="analytics-card status-panel">
+              <div class="analytics-header">
+                <h2>Status</h2>
+                <button id="statusBtn" type="button">Status</button>
+              </div>
+              <div id="statusDetails" class="status-details collapsed"></div>
+            </article>
+          </section>
         </section>
       </main>
     </div>

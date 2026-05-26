@@ -155,6 +155,8 @@ const els = {
   csvImportInput: document.getElementById("csvImportInput"),
   sessionChart: document.getElementById("sessionChart"),
   dailyChart: document.getElementById("dailyChart"),
+  tabButtons: Array.from(document.querySelectorAll("[data-tab-target]")),
+  tabPanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
 };
 
 let state = loadState();
@@ -162,6 +164,7 @@ let selectedDate = state.settings.selectedDate || localDateKey();
 let selectedSessionId = state.settings.selectedSessionId || null;
 let selectedZoneId = null;
 let selectedRange = state.settings.selectedRange || "session";
+let activeTab = state.settings.activeTab || "track";
 let courtImageLoaded = false;
 let sessionChart;
 let dailyChart;
@@ -217,6 +220,7 @@ function saveState() {
   state.settings.selectedDate = selectedDate;
   state.settings.selectedSessionId = selectedSessionId;
   state.settings.selectedRange = selectedRange;
+  state.settings.activeTab = activeTab;
   state.settings.goals = normalizeGoals(state.settings.goals);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -912,9 +916,26 @@ function renderStatus() {
     .join("");
 }
 
+function setActiveTab(tabName) {
+  activeTab = tabName;
+  els.tabButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.tabTarget === tabName);
+  });
+  els.tabPanels.forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.tabPanel === tabName);
+  });
+  saveState();
+  if (tabName === "analyze") {
+    renderHeatmaps();
+    renderInsights();
+    renderCharts();
+  }
+}
+
 function renderAll() {
   currentDay();
   currentSession();
+  setActiveTab(activeTab);
   renderSessions();
   renderSessionNotes();
   renderDate();
@@ -924,7 +945,7 @@ function renderAll() {
   renderHeatmaps();
   renderInsights();
   renderPastDays();
-  renderCharts();
+  if (activeTab === "analyze") renderCharts();
   renderStatus();
   renderShotPopover();
   els.undoBtn.disabled = state.undo.length === 0;
@@ -1005,6 +1026,7 @@ function undoLast() {
   selectedDate = state.settings.selectedDate || localDateKey();
   selectedSessionId = state.settings.selectedSessionId || null;
   selectedRange = state.settings.selectedRange || "session";
+  activeTab = state.settings.activeTab || "track";
   selectedZoneId = null;
   saveState();
   renderAll();
@@ -1168,6 +1190,9 @@ function importCsvFile(file) {
 }
 
 function bindEvents() {
+  els.tabButtons.forEach((button) => {
+    button.addEventListener("click", () => setActiveTab(button.dataset.tabTarget));
+  });
   els.prevDayBtn.addEventListener("click", () => changeDate(-1));
   els.nextDayBtn.addEventListener("click", () => changeDate(1));
   els.datePicker.addEventListener("change", (event) => {
