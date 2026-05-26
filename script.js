@@ -137,6 +137,7 @@ const els = {
   courtTitle: document.getElementById("courtTitle"),
   courtImage: document.getElementById("courtImage"),
   courtSvg: document.getElementById("courtSvg"),
+  focusModeBtn: document.getElementById("focusModeBtn"),
   makeBtn: document.getElementById("makeBtn"),
   missBtn: document.getElementById("missBtn"),
   shotPopover: document.getElementById("shotPopover"),
@@ -151,6 +152,19 @@ const els = {
   comparisonGrid: document.getElementById("comparisonGrid"),
   bestZonesList: document.getElementById("bestZonesList"),
   weakZonesList: document.getElementById("weakZonesList"),
+  zoneDetail: document.getElementById("zoneDetail"),
+  zoneDetailScope: document.getElementById("zoneDetailScope"),
+  shotTimeline: document.getElementById("shotTimeline"),
+  shotTimelineMeta: document.getElementById("shotTimelineMeta"),
+  trainingStripSession: document.getElementById("trainingStripSession"),
+  trainingStripDate: document.getElementById("trainingStripDate"),
+  trainingStripStats: document.getElementById("trainingStripStats"),
+  trainingStripZone: document.getElementById("trainingStripZone"),
+  mobileActionStat: document.getElementById("mobileActionStat"),
+  mobileActionZone: document.getElementById("mobileActionZone"),
+  mobileUndoBtn: document.getElementById("mobileUndoBtn"),
+  mobileMakeBtn: document.getElementById("mobileMakeBtn"),
+  mobileMissBtn: document.getElementById("mobileMissBtn"),
   importBtn: document.getElementById("importBtn"),
   csvImportInput: document.getElementById("csvImportInput"),
   sessionChart: document.getElementById("sessionChart"),
@@ -165,6 +179,7 @@ let selectedSessionId = state.settings.selectedSessionId || null;
 let selectedZoneId = null;
 let selectedRange = state.settings.selectedRange || "session";
 let activeTab = state.settings.activeTab || "track";
+let focusMode = Boolean(state.settings.focusMode);
 let courtImageLoaded = false;
 let sessionChart;
 let dailyChart;
@@ -221,6 +236,7 @@ function saveState() {
   state.settings.selectedSessionId = selectedSessionId;
   state.settings.selectedRange = selectedRange;
   state.settings.activeTab = activeTab;
+  state.settings.focusMode = focusMode;
   state.settings.goals = normalizeGoals(state.settings.goals);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -561,6 +577,85 @@ function renderStats() {
   els.selectedZoneStat.textContent = selectedStats
     ? `${selectedStats.made}/${selectedStats.attempts} • ${selectedStats.pct}% all time`
     : "Pick a zone";
+}
+
+function renderTrainingStrip() {
+  const session = currentSession();
+  const sessionStats = statsFor(session.shots);
+  const zone = zones.find((item) => item.id === selectedZoneId);
+  els.trainingStripSession.textContent = session.name;
+  els.trainingStripDate.textContent = formatDateLabel(selectedDate);
+  els.trainingStripStats.textContent = `${sessionStats.made}/${sessionStats.attempts} • ${sessionStats.pct}%`;
+  els.trainingStripZone.textContent = zone ? `${zone.name} selected` : "No zone selected";
+  els.mobileActionStat.textContent = `${sessionStats.made}/${sessionStats.attempts}`;
+  els.mobileActionZone.textContent = zone ? zone.name : "Pick a zone";
+  els.mobileMakeBtn.disabled = !selectedZoneId;
+  els.mobileMissBtn.disabled = !selectedZoneId;
+  els.mobileUndoBtn.disabled = state.undo.length === 0;
+}
+
+function renderZoneDetail() {
+  const zone = zones.find((item) => item.id === selectedZoneId);
+  if (!zone) {
+    els.zoneDetail.classList.add("empty-state");
+    els.zoneDetail.innerHTML = "Pick a zone to see session, week, all-time, streak, and goal context.";
+    els.zoneDetailScope.textContent = "No zone selected";
+    return;
+  }
+
+  els.zoneDetail.classList.remove("empty-state");
+  els.zoneDetailScope.textContent = zone.type;
+  const sessionStats = statsFor(currentSession().shots, zone.id);
+  const weekStats = statsFor(shotsBetween(shiftDateKey(selectedDate, -6), selectedDate), zone.id);
+  const lifetimeStats = statsFor(allShots(), zone.id);
+  const streak = computeStreaks(currentSession().shots.filter((shot) => shot.zoneId === zone.id));
+  const goals = normalizeGoals(state.settings.goals);
+  const goalBits = [];
+  if (goals.zoneAttempts) {
+    goalBits.push(`${progressPercent(sessionStats.attempts, goals.zoneAttempts)}% attempt goal`);
+  }
+  if (goals.zonePct) {
+    goalBits.push(`${progressPercent(sessionStats.pct, goals.zonePct)}% FG goal`);
+  }
+
+  els.zoneDetail.innerHTML = `
+    <div class="zone-detail-title">
+      <strong>${zone.name}</strong>
+      <span>${goalBits.length ? goalBits.join(" • ") : "No zone goal set"}</span>
+    </div>
+    <div class="zone-detail-grid">
+      ${renderZoneDetailStat("Session", sessionStats)}
+      ${renderZoneDetailStat("Week", weekStats)}
+      ${renderZoneDetailStat("All Time", lifetimeStats)}
+    </div>
+    <div class="zone-detail-grid">
+      <div class="zone-detail-stat"><span>Zone streak</span><strong>${streak.bestMake}</strong><small>Current ${streak.current} ${streak.currentType}</small></div>
+      <div class="zone-detail-stat"><span>Volume</span><strong>${sessionStats.attempts}</strong><small>This session</small></div>
+      <div class="zone-detail-stat"><span>Type</span><strong>${zone.type}</strong><small>Shot family</small></div>
+    </div>
+  `;
+}
+
+function renderZoneDetailStat(label, stat) {
+  return `<div class="zone-detail-stat"><span>${label}</span><strong>${stat.pct}%</strong><small>${stat.made}/${stat.attempts}</small></div>`;
+}
+
+function renderShotTimeline() {
+  const shots = currentSession().shots.slice(-80);
+  els.shotTimelineMeta.textContent = `${currentSession().shots.length} shot${currentSession().shots.length === 1 ? "" : "s"}`;
+  if (!shots.length) {
+    els.shotTimeline.classList.add("empty-state");
+    els.shotTimeline.innerHTML = "Your makes and misses will appear here as a shot tape.";
+    return;
+  }
+  els.shotTimeline.classList.remove("empty-state");
+  els.shotTimeline.innerHTML = shots
+    .map((shot, index) => {
+      const zone = zones.find((item) => item.id === shot.zoneId);
+      const label = `${index + 1}. ${zone?.name || shot.zoneId} • ${shot.made ? "Make" : "Miss"}`;
+      return `<span class="shot-dot ${shot.made ? "make" : "miss"}" title="${label}"></span>`;
+    })
+    .join("");
 }
 
 function renderDate() {
@@ -932,15 +1027,35 @@ function setActiveTab(tabName) {
   }
 }
 
+function setFocusMode(enabled) {
+  focusMode = enabled;
+  document.body.classList.toggle("focus-mode", focusMode);
+  els.focusModeBtn.textContent = focusMode ? "Exit Focus" : "Focus";
+  if (focusMode) {
+    activeTab = "track";
+    els.tabButtons.forEach((button) => {
+      button.classList.toggle("active", button.dataset.tabTarget === "track");
+    });
+    els.tabPanels.forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.tabPanel === "track");
+    });
+  }
+  saveState();
+}
+
 function renderAll() {
   currentDay();
   currentSession();
   setActiveTab(activeTab);
+  setFocusMode(focusMode);
   renderSessions();
   renderSessionNotes();
   renderDate();
   renderCourt();
   renderStats();
+  renderTrainingStrip();
+  renderZoneDetail();
+  renderShotTimeline();
   renderGoals();
   renderHeatmaps();
   renderInsights();
@@ -1027,6 +1142,7 @@ function undoLast() {
   selectedSessionId = state.settings.selectedSessionId || null;
   selectedRange = state.settings.selectedRange || "session";
   activeTab = state.settings.activeTab || "track";
+  focusMode = Boolean(state.settings.focusMode);
   selectedZoneId = null;
   saveState();
   renderAll();
@@ -1222,6 +1338,13 @@ function bindEvents() {
   });
   els.makeBtn.addEventListener("click", () => recordShot(true));
   els.missBtn.addEventListener("click", () => recordShot(false));
+  els.mobileMakeBtn.addEventListener("click", () => recordShot(true));
+  els.mobileMissBtn.addEventListener("click", () => recordShot(false));
+  els.mobileUndoBtn.addEventListener("click", undoLast);
+  els.focusModeBtn.addEventListener("click", () => setFocusMode(!focusMode));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && focusMode) setFocusMode(false);
+  });
   els.popoverMakeBtn.addEventListener("click", () => recordShot(true));
   els.popoverMissBtn.addEventListener("click", () => recordShot(false));
   els.focusHeatmapSelect.addEventListener("change", (event) => {
